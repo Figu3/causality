@@ -86,8 +86,17 @@ mostly a bonus table plus a flavour tag the Referee can read.
 environmental hazard, old age, disease, ambush (section 10). Death prevention items (phoenix
 feather, divine intervention, group rescue) are deferred.
 
-**Heir target.** Every character names one heir: their own next character, or a group vault.
-Default is the family vault if the character has a family, else next character.
+**Heirs must be prepared.** An heir is named while the character is alive and must accept before
+the character dies. Two kinds:
+
+- **Blood heir**: an existing character in the same family.
+- **Spiritual heir**: a real person not yet in the game. They receive the message at the
+  character's death, and their new character is born into the family as an adopted line, with the
+  estate. This is the game's invite path (section 16).
+
+Dying **unprepared** (no accepted heir): shards go to the family vault, or are burned if there is
+no family; the chosen item follows the held-place rule; nothing else passes. Marriage and
+apprenticeship as further ways to make heirs are deferred.
 
 **Estate on death or retirement:**
 
@@ -143,7 +152,8 @@ recent performance.
 
 - **Acquire** by defeating the floor's current boss: the NPC boss, or the lord's champion.
   Instant claim, tower-wide notification.
-- **Powers:** entry tax up to 10%, trap placement within limits, minion placement, arena and
+- **Powers:** entry tax up to 10%, of which half goes to the lord and half to the Tower (a sink;
+  it also funds the collective offering that opens the gate). Trap placement within limits, minion placement, arena and
   aesthetic changes, passive income scaled on floor traffic. The lord appoints a **champion**:
   an NPC whose personality and tactics the lord writes as a short prompt (bounded by the Referee's
   rules), or a player who accepts and negotiates reward sharing. Without a champion the lord's own
@@ -289,7 +299,7 @@ Single currency, **Shards**, deliberately scarce. Regulation is deterministic; n
 hard 4, nightmare 10); loot; crafting margins (10 to 30%, quality by skill); trading; lord
 passive income.
 
-**Sinks:** estate burn on death (90%) or retirement (75%); floor entry; lord tax (up to 10%);
+**Sinks:** estate burn on death (90%) or retirement (75%); floor entry; the Tower's half of lord tax;
 repair (10% of item value); crafting failure (materials and fee); group upkeep; war upkeep; ambush
 cost; auction listing fee (1) and sale tax (5%).
 
@@ -305,7 +315,17 @@ unique items. Difficulty scales on player level, floor, equipment, recent perfor
 
 ## 13. The Chronicler
 
-The Chronicler is the game. It runs **weekly**.
+The Chronicler is the game. Two cadences, because the word covers two things:
+
+- **The chronicle as news is daily** from day one: a template digest, no model, posted to every
+  group chat and the public channel ("Yesterday in the Tower: 3 deaths, floor 6 changed hands,
+  first ascent of floor 8 by X"). It is a card, and it is the morning open.
+- **The Chronicler's projects (world changes) are weekly** through the beta. They go daily only when
+  all three hold: the weekly pool leaves more than 3 ratified-worthy deeds unchronicled three weeks
+  running; the tower is large enough to absorb it (rule of thumb: one project per 10 floors per
+  week, so 50+ floors); and ratification is community or automation with a veto, not one person.
+
+The procedure below is the weekly project run.
 
 **Inputs.** The improvise log (every `Defy fate` attempt, section 8) and the achievement log
 (deterministic milestones: tower firsts, records, unusual state such as a group holding three
@@ -385,7 +405,48 @@ client, designer-ratified Chronicler.
 9. Additional clients (web, Discord, app); the 2D renderer if it ever earns its place.
 10. Monetisation. Parked until the loop proves out; nothing that touches stakes.
 
-## 16. Placeholders to tune
+## 16. Growth and monetisation
+
+The viral unit is a story about a real person with their name on it. Every loop below produces one.
+
+**Growth loops (in beta):**
+
+1. **The spiritual heir** (section 4). Recruitment happens at the moment of death, carries a gift,
+   and the recruit arrives with a story already attached. Built in step 1: an heir is a Telegram
+   user id.
+2. **Groups are Telegram groups.** A floor needs a company, a company needs members, and the
+   company is a chat with the bot in it. Lords recruit their friends into a chat they would have
+   anyway.
+3. **Cards.** Every death and retirement produces a shareable card: name, age, floor, cause,
+   epitaph, killer or group if any. The daily digest is a card. Chronicle entries are cards.
+4. **The chronicle is public.** Weekly projects and daily news post to a public channel and to X,
+   naming the people behind the deeds. "Get chronicled" is the aspiration.
+5. **Visible scarcity.** Ten lordships and a public board of who holds what. Feuds are stories.
+6. **Invite-gated admission.** The first character is free, so admission is the growth valve: the
+   first waves enter only as heirs or through group invites. Nobody arrives without a story of who
+   brought them.
+
+**Monetisation (nothing touches stakes):**
+
+- First character free. **Heirs are always free**: continuity is the game.
+- **A fresh bloodline costs money.** Walking away from a family, its curse and its debts to start
+  clean is the thing people pay for. Dying is never charged.
+- Cosmetic and memorial: epitaph styles, monument embellishments, charter crests, a printed
+  chronicle page.
+
+**Deferred, deliberately:**
+
+- **Real-money economy.** Shards stay non-redeemable through the beta. A redeemable currency
+  changes who shows up (farmers and scripts), makes permadeath a financial event (which no
+  conflict rule survives), and is a regulatory question (e-money or crypto-asset; betting on
+  challenges with redeemable value is gambling). Revisit only after retention is proven, and run it
+  through a classification check first.
+- **On-chain layer.** If anything is anchored, anchor the chronicle and monuments (soulbound to the
+  deed-doer): "permanent, irreversible" is a claim an immutable ledger makes honestly. Cards can be
+  claimed as soulbound, free, optional mementos. No market, no transfer, nothing the core depends
+  on.
+
+## 17. Placeholders to tune
 
 Aging rate (0.8 years/day), phase modifiers, starting age range, inheritance rates (10/25%),
 entry cost formula, tax cap (10%), group creation costs, war upkeep and delay (24h), ambush cap,

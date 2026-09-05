@@ -69,7 +69,8 @@ phrasings of known verbs to commands. Anything the matcher cannot resolve is off
 
 ## Build order
 
-1. Core loop on one floor: character creation (name, starting age), rooms, movement, examine,
+1. Core loop on one floor: character creation (name, starting age), heir designation (blood or
+   spiritual, by Telegram user id), rooms, movement, examine,
    deterministic combat, death, the estate rule, epitaph. Telegram adapter. No model calls.
 2. `Defy fate`: Referee contract, outcome tables, bounds, improvise log. First model call.
 3. Floors 1 to 10, biomes, nightly prose batch, missions, entry costs, market.

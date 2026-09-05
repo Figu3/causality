@@ -27,4 +27,6 @@ Design done for beta. No code yet. Next step is build order step 1 in the archit
 - Lords: member-only; seat passes within the group unless slain in the floor challenge.
 - PvP: no character can be lost to something it could not act against; war (24h delay) gates
   ambushes; theft, contracts and sabotage deferred.
+- Heirs must be prepared and accept while you live; a spiritual heir (outside the game) is the invite path.
+- Shards non-redeemable through beta; heirs free, a fresh bloodline is paid; chronicle daily as news, weekly as world changes.
 - Cities and structures deferred, listed in the spec's "later" section.
