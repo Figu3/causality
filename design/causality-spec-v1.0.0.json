@@ -1,0 +1,1070 @@
+{
+  "game": {
+    "title": "Causality",
+    "version": "1.0.0",
+    "description": "A hardcore mobile tower-climbing game where exceptional player actions create permanent, stacking world changes that affect all future players",
+    "platforms": ["iOS", "Android", "WebGL"],
+    "game_modes": ["text_based_mud", "2d_hack_slash"],
+    "core_philosophy": [
+      "player_actions_shape_world_permanently",
+      "emergent_gameplay",
+      "meaningful_permadeath",
+      "economic_scarcity",
+      "player_agency",
+      "long_term_investment",
+      "cascading_consequences"
+    ]
+  },
+
+  "character_system": {
+    "stats": {
+      "primary_attributes": {
+        "might": {
+          "description": "Physical strength and melee damage",
+          "affects": ["melee_damage", "carry_capacity", "intimidation"],
+          "aging_impact": "high_physical_decline"
+        },
+        "agility": {
+          "description": "Speed, reflexes, and dexterity",
+          "affects": ["dodge", "attack_speed", "initiative"],
+          "aging_impact": "high_physical_decline"
+        },
+        "grit": {
+          "description": "Endurance and resilience",
+          "affects": ["hp", "stamina", "resistance"],
+          "aging_impact": "moderate_physical_decline"
+        },
+        "cunning": {
+          "description": "Cleverness and tactical thinking",
+          "affects": ["crit_chance", "trap_detection", "strategy"],
+          "aging_impact": "improves_with_age"
+        },
+        "focus": {
+          "description": "Mental discipline and concentration",
+          "affects": ["magic_power", "crafting_quality", "skill_retention"],
+          "aging_impact": "stable"
+        },
+        "perception": {
+          "description": "Awareness and observation",
+          "affects": ["detection", "accuracy", "resource_finding"],
+          "aging_impact": "slight_decline"
+        },
+        "guile": {
+          "description": "Deception and subterfuge",
+          "affects": ["stealth", "persuasion", "market_margins"],
+          "aging_impact": "improves_with_age"
+        },
+        "presence": {
+          "description": "Leadership and charisma",
+          "affects": ["faction_influence", "npc_reactions", "trade_prices"],
+          "aging_impact": "improves_with_age"
+        }
+      },
+
+      "derived_stats": {
+        "hp": "base_100 + (grit * 15) + (might * 5)",
+        "stamina": "base_50 + (grit * 10) + (agility * 5)",
+        "initiative": "(agility * 2) + perception",
+        "carry_capacity": "base_20 + (might * 3)",
+        "dodge": "(agility * 2) + (perception)",
+        "block": "(might * 2) + (grit)",
+        "magic_resistance": "(focus * 2) + (grit)",
+        "social_standing": "(presence * 2) + (guile)",
+        "crafting_skill": "(focus * 2) + (cunning)",
+        "trade_skill": "(guile * 2) + (presence)"
+      },
+
+      "stat_growth": {
+        "points_per_level": 3,
+        "max_level": 100,
+        "soft_cap_per_stat": 100,
+        "hard_cap_per_stat": 150
+      }
+    },
+
+    "aging_system": {
+      "real_time_conversion": "3_months_real_equals_full_lifetime",
+      "lifespan": {
+        "min_playable_age": 15,
+        "peak_physical_age": 30,
+        "peak_overall_age": 45,
+        "average_death_age": 75,
+        "max_age": 90
+      },
+      "age_phases": {
+        "youth": {
+          "age_range": [15, 25],
+          "modifiers": {
+            "might": 0.9,
+            "agility": 1.1,
+            "grit": 0.95,
+            "cunning": 0.85,
+            "focus": 0.9,
+            "perception": 1.0,
+            "guile": 0.8,
+            "presence": 0.85
+          },
+          "growth_rate": 1.5
+        },
+        "young_adult": {
+          "age_range": [26, 35],
+          "modifiers": {
+            "all_stats": 1.0
+          },
+          "growth_rate": 1.2
+        },
+        "prime": {
+          "age_range": [36, 45],
+          "modifiers": {
+            "might": 1.0,
+            "agility": 0.98,
+            "cunning": 1.1,
+            "focus": 1.1,
+            "guile": 1.15,
+            "presence": 1.15
+          },
+          "growth_rate": 1.0
+        },
+        "middle_age": {
+          "age_range": [46, 60],
+          "modifiers": {
+            "might": 0.95,
+            "agility": 0.92,
+            "grit": 0.97,
+            "cunning": 1.15,
+            "focus": 1.1,
+            "perception": 0.98,
+            "guile": 1.2,
+            "presence": 1.2
+          },
+          "growth_rate": 0.8
+        },
+        "elder": {
+          "age_range": [61, 90],
+          "modifiers": {
+            "might": "0.9 - (age-60)*0.01",
+            "agility": "0.85 - (age-60)*0.015",
+            "grit": "0.92 - (age-60)*0.008",
+            "cunning": 1.2,
+            "focus": 1.05,
+            "perception": "0.95 - (age-60)*0.005",
+            "guile": 1.25,
+            "presence": 1.25
+          },
+          "growth_rate": 0.5
+        }
+      }
+    },
+
+    "emergent_class_system": {
+      "class_discovery": {
+        "mechanism": "achievement_based",
+        "requirements_hidden": true,
+        "multi_classing_allowed": true
+      },
+      "example_classes": {
+        "blade_master": {
+          "requirements": {
+            "might": 50,
+            "agility": 40,
+            "melee_kills": 500,
+            "perfect_parries": 100
+          },
+          "bonuses": {
+            "melee_damage": 1.25,
+            "parry_window": 1.5,
+            "dual_wield_unlock": true
+          }
+        },
+        "shadow_walker": {
+          "requirements": {
+            "agility": 60,
+            "guile": 50,
+            "stealth_missions": 100,
+            "undetected_floor_clears": 20
+          },
+          "bonuses": {
+            "stealth_effectiveness": 1.5,
+            "backstab_damage": 2.0,
+            "shadow_step_ability": true
+          }
+        },
+        "merchant_prince": {
+          "requirements": {
+            "presence": 70,
+            "guile": 60,
+            "total_trades": 1000,
+            "profit_earned": 100000
+          },
+          "bonuses": {
+            "trade_margins": 1.3,
+            "market_influence": 1.5,
+            "exclusive_contracts": true
+          }
+        },
+        "artificer": {
+          "requirements": {
+            "focus": 60,
+            "cunning": 50,
+            "items_crafted": 500,
+            "legendary_crafts": 10
+          },
+          "bonuses": {
+            "crafting_quality": 1.4,
+            "resource_efficiency": 1.25,
+            "unique_recipes": true
+          }
+        }
+      }
+    },
+
+    "skill_progression": {
+      "action_based_learning": true,
+      "skills": {
+        "combat_skills": {
+          "melee": {
+            "gained_from": ["melee_attacks", "melee_kills", "parries"],
+            "unlocks": ["combo_attacks", "weapon_mastery", "counter_strikes"]
+          },
+          "ranged": {
+            "gained_from": ["ranged_attacks", "headshots", "long_range_kills"],
+            "unlocks": ["quick_draw", "piercing_shots", "ricochet"]
+          },
+          "magic": {
+            "gained_from": ["spell_casts", "mana_spent", "spell_combinations"],
+            "unlocks": ["spell_power", "mana_efficiency", "dual_casting"]
+          }
+        },
+        "crafting_skills": {
+          "smithing": {
+            "gained_from": ["items_forged", "materials_refined", "repairs"],
+            "unlocks": ["quality_tiers", "special_alloys", "enchantment_slots"]
+          },
+          "alchemy": {
+            "gained_from": ["potions_brewed", "ingredients_discovered", "experiments"],
+            "unlocks": ["potion_strength", "duration", "combination_effects"]
+          }
+        },
+        "social_skills": {
+          "leadership": {
+            "gained_from": ["faction_management", "successful_delegations", "followers_gained"],
+            "unlocks": ["larger_groups", "loyalty_bonuses", "inspiration_auras"]
+          },
+          "negotiation": {
+            "gained_from": ["successful_trades", "diplomatic_solutions", "price_haggling"],
+            "unlocks": ["better_prices", "exclusive_deals", "faction_mediation"]
+          }
+        }
+      }
+    },
+
+    "death_system": {
+      "permadeath": true,
+      "death_triggers": [
+        "hp_reaches_zero",
+        "failed_death_save",
+        "execution_by_floor_lord",
+        "environmental_hazard",
+        "old_age",
+        "disease",
+        "assassination"
+      ],
+      "death_prevention": {
+        "extremely_rare": true,
+        "methods": {
+          "phoenix_feather": {
+            "rarity": "mythic",
+            "uses": 1,
+            "effect": "resurrect_on_death"
+          },
+          "divine_intervention": {
+            "requirement": "max_religion_standing",
+            "chance": 0.01,
+            "cooldown_days": 30
+          },
+          "guild_rescue": {
+            "requirement": "guild_emergency_protocol",
+            "cost": "50000_currency",
+            "member_vote_required": true
+          }
+        }
+      },
+      "legacy_system": {
+        "inheritance": {
+          "currency": 0.1,
+          "items": "one_chosen_item",
+          "reputation": 0.25,
+          "knowledge": "discovered_recipes_and_locations"
+        },
+        "memorial": {
+          "hall_of_heroes": true,
+          "epitaph_system": true,
+          "achievement_preservation": true
+        }
+      }
+    }
+  },
+
+  "tower_system": {
+    "structure": {
+      "total_floors": 100,
+      "generation": "ai_procedural",
+      "daily_seed": true,
+      "backtracking_allowed": true
+    },
+
+    "floor_generation": {
+      "ai_parameters": {
+        "difficulty_curve": "exponential",
+        "complexity_increase": "gradual",
+        "player_data_learning": true,
+        "fairness_validation": true
+      },
+      "components": {
+        "rooms": {
+          "min": 5,
+          "max": 20,
+          "types": ["combat", "puzzle", "treasure", "trap", "rest", "shop", "event"]
+        },
+        "connections": {
+          "style": "graph_based",
+          "secret_paths": true,
+          "shortcuts": true,
+          "one_way_passages": true
+        },
+        "objectives": {
+          "primary": "reach_boss_room",
+          "secondary": ["full_exploration", "treasure_collection", "perfect_clear"],
+          "hidden": ["secret_boss", "lore_fragments", "rare_materials"]
+        }
+      }
+    },
+
+    "biomes": {
+      "initial_ten": [
+        {
+          "name": "Crumbling Ruins",
+          "theme": "ancient_civilization",
+          "hazards": ["falling_debris", "unstable_floors", "ancient_traps"],
+          "resources": ["stone", "iron", "ancient_texts"],
+          "special_mechanics": ["archaeology_sites", "golem_guardians"]
+        },
+        {
+          "name": "Crimson Forge",
+          "theme": "volcanic_foundry",
+          "hazards": ["lava_flows", "heat_exhaustion", "metal_storms"],
+          "resources": ["obsidian", "rare_metals", "fire_crystals"],
+          "special_mechanics": ["forge_stations", "heat_management"]
+        },
+        {
+          "name": "Whispering Archives",
+          "theme": "infinite_library",
+          "hazards": ["knowledge_madness", "paper_constructs", "reality_tears"],
+          "resources": ["knowledge_scrolls", "ink", "binding_leather"],
+          "special_mechanics": ["research_nodes", "spell_learning"]
+        },
+        {
+          "name": "Verdant Canopy",
+          "theme": "overgrown_forest",
+          "hazards": ["poisonous_flora", "predators", "root_mazes"],
+          "resources": ["herbs", "wood", "rare_seeds"],
+          "special_mechanics": ["climbing_paths", "growth_magic"]
+        },
+        {
+          "name": "Crystal Spire",
+          "theme": "crystalline_peaks",
+          "hazards": ["reflection_damage", "light_puzzles", "shard_storms"],
+          "resources": ["crystals", "prismatic_dust", "light_essence"],
+          "special_mechanics": ["light_refraction", "energy_charging"]
+        },
+        {
+          "name": "Drowned Depths",
+          "theme": "underwater_ruins",
+          "hazards": ["drowning", "pressure", "aquatic_predators"],
+          "resources": ["pearls", "coral", "deep_minerals"],
+          "special_mechanics": ["oxygen_management", "underwater_combat"]
+        },
+        {
+          "name": "Bone Cathedral",
+          "theme": "necropolis",
+          "hazards": ["undead", "curse_accumulation", "life_drain"],
+          "resources": ["bone", "soul_fragments", "death_essence"],
+          "special_mechanics": ["necromancy", "spirit_communication"]
+        },
+        {
+          "name": "Clockwork Halls",
+          "theme": "mechanical_maze",
+          "hazards": ["grinding_gears", "steam_vents", "timing_puzzles"],
+          "resources": ["gears", "springs", "clockwork_cores"],
+          "special_mechanics": ["mechanism_operation", "time_manipulation"]
+        },
+        {
+          "name": "Storm Citadel",
+          "theme": "floating_fortress",
+          "hazards": ["lightning", "wind_currents", "gravity_shifts"],
+          "resources": ["sky_iron", "cloud_silk", "storm_essence"],
+          "special_mechanics": ["flight_sections", "weather_control"]
+        },
+        {
+          "name": "Shadow Realm",
+          "theme": "dimension_between",
+          "hazards": ["shadow_creatures", "reality_instability", "void_exposure"],
+          "resources": ["shadow_silk", "void_crystals", "dream_fragments"],
+          "special_mechanics": ["phase_shifting", "shadow_manipulation"]
+        }
+      ]
+    },
+
+    "floor_lord_system": {
+      "acquisition": {
+        "method": "defeat_current_boss",
+        "instant_claim": true,
+        "notification": "server_wide"
+      },
+      "powers": {
+        "floor_modification": {
+          "trap_placement": true,
+          "resource_spawns": true,
+          "difficulty_adjustment": "within_limits",
+          "aesthetic_changes": true
+        },
+        "economic": {
+          "entry_tax": {
+            "max_percentage": 10,
+            "automatic_collection": true
+          },
+          "resource_generation": {
+            "passive_income": true,
+            "amount": "based_on_floor_traffic"
+          }
+        },
+        "defensive": {
+          "boss_customization": true,
+          "minion_placement": true,
+          "arena_modification": true
+        }
+      },
+      "delegation": {
+        "appoint_champion": {
+          "npc_option": true,
+          "player_option": true,
+          "acceptance_required": "if_player",
+          "reward_sharing": "negotiable"
+        },
+        "abdication": {
+          "voluntary": true,
+          "keep_rewards": true,
+          "continue_climbing": true
+        }
+      },
+      "challenges": {
+        "queue_system": true,
+        "cooldown_between_attempts": "1_hour",
+        "spectator_mode": true,
+        "betting_system": true
+      }
+    },
+
+    "boss_system": {
+      "variety": {
+        "base_types": 50,
+        "modifiers": ["enraged", "armored", "magical", "swift", "cunning"],
+        "scaling": "based_on_floor_level",
+        "ai_behavior_trees": true
+      },
+      "npc_bosses": {
+        "personality_types": ["aggressive", "defensive", "tactical", "chaotic", "adaptive"],
+        "learning_ai": true,
+        "remembers_players": true
+      },
+      "player_bosses": {
+        "loadout_snapshot": true,
+        "ai_controlled_version": true,
+        "special_abilities": "based_on_class"
+      }
+    }
+  },
+
+  "economy_system": {
+    "currency": {
+      "single_type": true,
+      "name": "Shards",
+      "scarcity": "high",
+      "no_inflation": "active_sinks"
+    },
+
+    "earning_methods": {
+      "missions": {
+        "risk_reward_scaling": true,
+        "completion_bonus": {
+          "base": 10,
+          "per_floor": "floor_number * 2",
+          "difficulty_multiplier": {
+            "easy": 1,
+            "medium": 2,
+            "hard": 4,
+            "nightmare": 10
+          }
+        }
+      },
+      "crafting": {
+        "profit_margins": "10-30%",
+        "skill_based_quality": true,
+        "market_demand_responsive": true
+      },
+      "trading": {
+        "arbitrage": true,
+        "floor_specific_prices": true,
+        "supply_demand_curves": true
+      }
+    },
+
+    "sinks": {
+      "floor_entry": {
+        "base_cost": 10,
+        "scaling": "floor_number * 5"
+      },
+      "death_penalty": {
+        "percentage_lost": 50
+      },
+      "crafting_failures": {
+        "material_loss": true,
+        "fee_loss": true
+      },
+      "faction_upkeep": {
+        "weekly_dues": "based_on_faction_size"
+      },
+      "equipment_repair": {
+        "percentage_of_item_value": 10
+      }
+    },
+
+    "marketplace": {
+      "player_driven": true,
+      "auction_house": {
+        "bid_system": true,
+        "buyout_option": true,
+        "listing_fee": 1,
+        "sale_tax": 5
+      },
+      "direct_trade": {
+        "secure_trading": true,
+        "escrow_system": true
+      },
+      "market_boards": {
+        "per_floor": true,
+        "global_access": "with_fee"
+      }
+    }
+  },
+
+  "faction_system": {
+    "player_created_only": true,
+    "types": {
+      "religions": {
+        "creation_requirements": {
+          "followers": 10,
+          "currency": 10000,
+          "holy_relic": true
+        },
+        "mechanics": {
+          "doctrine_setting": true,
+          "blessing_system": true,
+          "pilgrimage_sites": true,
+          "divine_favor": {
+            "accumulated_through": "worship_actions",
+            "spent_on": "miracles"
+          }
+        },
+        "benefits": {
+          "death_save_chance": 0.01,
+          "stat_blessings": true,
+          "unique_spells": true
+        }
+      },
+      "clans": {
+        "creation_requirements": {
+          "family_members": 5,
+          "territory_claim": true,
+          "currency": 5000
+        },
+        "mechanics": {
+          "bloodline_traits": true,
+          "inheritance_bonuses": true,
+          "family_tree": true,
+          "honor_system": true
+        },
+        "benefits": {
+          "shared_experience": 0.1,
+          "family_vault": true,
+          "revenge_mechanics": true
+        }
+      },
+      "schools": {
+        "creation_requirements": {
+          "master_rank": true,
+          "students": 3,
+          "training_ground": true,
+          "currency": 7500
+        },
+        "mechanics": {
+          "technique_development": true,
+          "curriculum_setting": true,
+          "graduation_system": true,
+          "school_tournaments": true
+        },
+        "benefits": {
+          "unique_abilities": true,
+          "accelerated_learning": true,
+          "technique_sharing": true
+        }
+      },
+      "guilds": {
+        "creation_requirements": {
+          "members": 10,
+          "guild_hall": true,
+          "currency": 15000
+        },
+        "mechanics": {
+          "contracts": true,
+          "rank_progression": true,
+          "guild_wars": true,
+          "resource_pooling": true
+        },
+        "benefits": {
+          "group_missions": true,
+          "shared_storage": true,
+          "bulk_trading": true,
+          "member_insurance": true
+        }
+      }
+    },
+
+    "faction_interactions": {
+      "alliances": {
+        "mutual_benefit": true,
+        "resource_sharing": true,
+        "combined_operations": true
+      },
+      "conflicts": {
+        "war_declaration": true,
+        "territory_disputes": true,
+        "economic_warfare": true,
+        "sabotage_missions": true
+      },
+      "politics": {
+        "voting_systems": true,
+        "leadership_challenges": true,
+        "diplomatic_missions": true,
+        "spy_networks": true
+      }
+    }
+  },
+
+  "mission_system": {
+    "generation": "procedural",
+    "types": {
+      "combat": {
+        "variants": ["elimination", "survival", "boss_hunt", "arena"],
+        "scaling": "dynamic"
+      },
+      "exploration": {
+        "variants": ["mapping", "resource_gathering", "secret_finding", "pathfinding"]
+      },
+      "stealth": {
+        "variants": ["infiltration", "assassination", "theft", "espionage"]
+      },
+      "puzzle": {
+        "variants": ["logic", "pattern", "riddle", "mechanical"]
+      },
+      "social": {
+        "variants": ["negotiation", "recruitment", "information_gathering", "reputation"]
+      },
+      "crafting": {
+        "variants": ["commission", "research", "repair", "innovation"]
+      },
+      "escort": {
+        "variants": ["vip_protection", "caravan", "prisoner_transport", "pilgrimage"]
+      }
+    },
+
+    "difficulty_scaling": {
+      "factors": [
+        "player_level",
+        "floor_level",
+        "equipment_quality",
+        "recent_performance",
+        "party_size"
+      ],
+      "dynamic_adjustment": true
+    },
+
+    "rewards": {
+      "guaranteed": ["experience", "currency"],
+      "chance_based": ["equipment", "materials", "recipes", "lore"],
+      "rare": ["class_unlock_progress", "faction_reputation", "unique_items"]
+    }
+  },
+
+  "combat_systems": {
+    "text_mode": {
+      "style": "turn_based_tactical",
+      "commands": {
+        "basic": ["attack", "defend", "use_item", "flee"],
+        "advanced": ["combo", "counter", "feint", "all_out"],
+        "class_specific": "varies_by_unlocked_classes"
+      },
+      "combat_log": {
+        "detailed": true,
+        "flavor_text": true,
+        "damage_numbers": true
+      }
+    },
+
+    "2d_mode": {
+      "style": "real_time_action",
+      "controls": {
+        "mobile_optimized": true,
+        "gesture_based": true,
+        "customizable": true
+      },
+      "mechanics": {
+        "combos": true,
+        "dodging": "iframe_based",
+        "blocking": "timing_based",
+        "skills": "cooldown_based"
+      },
+      "visual_effects": {
+        "particle_systems": true,
+        "screen_shake": "optional",
+        "damage_numbers": "optional"
+      }
+    },
+
+    "shared_mechanics": {
+      "damage_calculation": {
+        "base": "weapon_damage + stat_modifier",
+        "critical": "base * 2",
+        "resistance": "percentage_reduction",
+        "armor": "flat_reduction"
+      },
+      "status_effects": {
+        "bleed": {
+          "damage_over_time": true,
+          "healing_reduction": 0.5
+        },
+        "burn": {
+          "damage_over_time": true,
+          "spreads_on_contact": true
+        },
+        "freeze": {
+          "movement_reduction": 0.7,
+          "shatter_damage": true
+        },
+        "poison": {
+          "damage_over_time": true,
+          "stat_reduction": true
+        },
+        "stun": {
+          "action_prevention": true,
+          "duration": "1-3_seconds"
+        }
+      }
+    }
+  },
+
+  "technical_specifications": {
+    "architecture": {
+      "backend": {
+        "language": "node_js_or_golang",
+        "database": "postgresql_with_redis_cache",
+        "api": "graphql",
+        "real_time": "websockets",
+        "microservices": [
+          "authentication",
+          "game_logic",
+          "economy",
+          "social",
+          "analytics"
+        ]
+      },
+      "client": {
+        "framework": "unity_or_godot",
+        "networking": "authoritative_server",
+        "state_management": "ecs_pattern",
+        "asset_loading": "addressables"
+      }
+    },
+
+    "ai_systems": {
+      "floor_generation": {
+        "type": "procedural_with_ml_optimization",
+        "training_data": "player_behavior_patterns",
+        "constraints": "fairness_and_completability"
+      },
+      "npc_behavior": {
+        "type": "behavior_trees_with_learning",
+        "adaptation": "per_player_strategies"
+      },
+      "economy_regulation": {
+        "type": "supply_demand_simulation",
+        "intervention": "automatic_sink_adjustment"
+      }
+    },
+
+    "performance_targets": {
+      "mobile": {
+        "fps": 30,
+        "ram_usage": "under_2gb",
+        "battery_life": "3_hours_minimum",
+        "download_size": "under_500mb"
+      },
+      "server": {
+        "concurrent_users": 10000,
+        "response_time": "under_100ms",
+        "uptime": "99.9_percent"
+      }
+    },
+
+    "security": {
+      "anti_cheat": {
+        "server_authoritative": true,
+        "action_validation": true,
+        "statistical_detection": true,
+        "encrypted_communication": true
+      },
+      "data_protection": {
+        "encryption_at_rest": true,
+        "gdpr_compliant": true,
+        "regular_backups": true
+      }
+    }
+  },
+
+  "causality_system": {
+    "description": "Actions having persistent, world-altering effects that stack and shape the game world permanently",
+    "core_principle": "Exceptional player achievements create lasting changes that affect all future players",
+
+    "causality_projects": {
+      "activation_requirements": {
+        "rarity": "extremely_rare",
+        "trigger": "unique_and_exceptional_achievements",
+        "examples": [
+          "first_player_to_defeat_floor_100_boss",
+          "discovering_hidden_biome_through_specific_actions",
+          "creating_economic_monopoly_lasting_30_days",
+          "uniting_three_warring_factions",
+          "completing_impossible_mission_solo",
+          "crafting_never_before_seen_item_combination",
+          "surviving_death_through_unique_method",
+          "establishing_religion_with_1000_followers",
+          "breaking_unbreakable_game_mechanic"
+        ]
+      },
+
+      "project_types": {
+        "world_alterations": {
+          "description": "Permanent changes to the game world structure",
+          "examples": [
+            {
+              "name": "The Great Bridge",
+              "trigger": "player_builds_connection_between_floors_20_and_40",
+              "effect": "permanent_shortcut_for_all_players",
+              "stacks_with": "other_shortcuts",
+              "monument": "builder's_statue_at_both_ends"
+            },
+            {
+              "name": "The Eternal Storm",
+              "trigger": "player_causes_weather_catastrophe",
+              "effect": "floors_30-35_permanently_have_storm_conditions",
+              "stacks_with": "other_weather_effects",
+              "monument": "storm_caller's_shrine"
+            }
+          ]
+        },
+
+        "economic_shifts": {
+          "description": "Permanent changes to game economy",
+          "examples": [
+            {
+              "name": "The Merchant's Decree",
+              "trigger": "player_controls_90_percent_of_specific_resource",
+              "effect": "permanent_price_floor_for_that_resource",
+              "stacks_with": "other_economic_decrees",
+              "monument": "trade_statue_in_market"
+            },
+            {
+              "name": "The Great Collapse",
+              "trigger": "player_destroys_major_trade_route",
+              "effect": "permanent_10_percent_tax_on_affected_floors",
+              "stacks_with": "other_taxes",
+              "monument": "ruins_of_prosperity"
+            }
+          ]
+        },
+
+        "faction_legacies": {
+          "description": "Permanent faction-based changes",
+          "examples": [
+            {
+              "name": "The First Scripture",
+              "trigger": "religion_reaches_critical_mass",
+              "effect": "permanent_shrine_on_every_10th_floor",
+              "stacks_with": "other_religious_sites",
+              "monument": "founding_temple"
+            },
+            {
+              "name": "The School Eternal",
+              "trigger": "school_produces_100_grandmasters",
+              "effect": "permanent_training_ground_floor_25",
+              "stacks_with": "other_schools",
+              "monument": "hall_of_masters"
+            }
+          ]
+        },
+
+        "mechanical_innovations": {
+          "description": "New gameplay mechanics added permanently",
+          "examples": [
+            {
+              "name": "The Discoverer's Gift",
+              "trigger": "player_finds_all_hidden_paths_floors_1-50",
+              "effect": "minimap_revealed_for_those_floors_for_all",
+              "stacks_with": "other_map_reveals",
+              "monument": "cartographer's_stone"
+            },
+            {
+              "name": "The Inventor's Legacy",
+              "trigger": "player_creates_impossible_item_combination",
+              "effect": "new_crafting_recipe_available_to_all",
+              "stacks_with": "infinite_new_recipes",
+              "monument": "inventor's_workshop"
+            }
+          ]
+        },
+
+        "boss_transformations": {
+          "description": "Permanent changes to boss encounters",
+          "examples": [
+            {
+              "name": "The Corrupted Guardian",
+              "trigger": "player_corrupts_floor_50_boss",
+              "effect": "boss_permanently_has_dark_form",
+              "stacks_with": "other_boss_modifications",
+              "monument": "corruption_altar"
+            },
+            {
+              "name": "The Pacified Throne",
+              "trigger": "player_befriends_floor_boss_without_combat",
+              "effect": "boss_becomes_merchant_permanently",
+              "stacks_with": "other_peaceful_conversions",
+              "monument": "peace_garden"
+            }
+          ]
+        }
+      },
+
+      "stacking_mechanics": {
+        "accumulation": "all_causality_projects_remain_active_forever",
+        "interaction": "projects_can_enhance_or_conflict_with_each_other",
+        "world_evolution": "game_world_becomes_increasingly_unique_over_time",
+        "examples": [
+          {
+            "scenario": "multiple_weather_effects",
+            "result": "floors_can_have_storm_plus_fog_plus_acid_rain"
+          },
+          {
+            "scenario": "conflicting_economic_decrees",
+            "result": "creates_black_market_opportunities"
+          },
+          {
+            "scenario": "multiple_shortcuts",
+            "result": "creates_speed_running_meta"
+          }
+        ]
+      },
+
+      "approval_system": {
+        "duration": "permanent_until_goal_achieved",
+        "modification": "cannot_be_reversed_or_modified",
+        "visibility": "all_players_see_active_projects",
+        "attribution": "permanent_record_of_who_triggered"
+      },
+
+      "monument_system": {
+        "purpose": "permanent_recognition_of_causality_trigger",
+        "features": [
+          "player_name_engraved",
+          "date_of_achievement",
+          "description_of_deed",
+          "visitor_counter",
+          "offering_system"
+        ],
+        "benefits": {
+          "pilgrimages": "players_visit_for_bonuses",
+          "legacy_points": "posthumous_reputation_gain",
+          "inspiration": "chance_for_related_class_unlock"
+        }
+      }
+    },
+
+    "world_history": {
+      "chronicle_system": {
+        "automatic_recording": true,
+        "categories": [
+          "age_of_founding",
+          "age_of_exploration",
+          "age_of_conflict",
+          "age_of_prosperity",
+          "current_age"
+        ],
+        "milestone_tracking": {
+          "server_firsts": true,
+          "record_breaking": true,
+          "unique_achievements": true
+        }
+      },
+
+      "legacy_impact": {
+        "reputation_echo": "dead_characters_reputation_affects_descendants",
+        "bloodline_causality": "family_actions_create_hereditary_traits",
+        "faction_memory": "factions_remember_historical_events",
+        "economic_shadows": "past_monopolies_affect_current_prices"
+      }
+    },
+
+    "emergent_narrative": {
+      "description": "Stories emerge from accumulated causality projects",
+      "examples": [
+        "The_server_where_players_united_all_floors_under_one_religion",
+        "The_server_where_economic_warfare_destroyed_floors_20-30",
+        "The_server_where_100_shortcuts_made_speed_running_dominant",
+        "The_server_where_every_boss_was_corrupted"
+      ],
+      "community_lore": {
+        "player_written_histories": true,
+        "legend_status": "famous_causality_triggers_become_myths",
+        "oral_tradition": "stories_passed_between_characters"
+      }
+    }
+  },
+
+  "progression_metrics": {
+    "session_length": "5-30_minutes",
+    "daily_active_time": "1-2_hours",
+    "character_lifespan": "3_months_real_time",
+    "floor_progression_rate": "1-2_floors_per_day_average",
+    "economy_velocity": "1000_currency_per_week_average",
+    "faction_engagement": "80_percent_players_in_faction",
+    "causality_projects_per_month": "1-3_server_wide",
+    "world_uniqueness_score": "increases_exponentially_over_time"
+  },
+
+  "content_pipeline": {
+    "update_frequency": "weekly_patches",
+    "major_updates": "monthly",
+    "new_biomes": "quarterly",
+    "seasonal_events": "every_3_months",
+    "balance_patches": "as_needed"
+  }
+}
