@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: causality
+      POSTGRES_PASSWORD: causality
+      POSTGRES_DB: causality
+    ports:
+      - "5433:5432"
+    volumes:
+      - causality-pg:/var/lib/postgresql/data
+volumes:
+  causality-pg:
