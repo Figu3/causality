@@ -106,6 +106,7 @@ export function createBot(token: string, game: Game): Bot {
   });
 
   bot.command("look", (ctx) => act(ctx, "look"));
+  bot.command("back", (ctx) => act(ctx, "look"));
   bot.command("status", (ctx) => act(ctx, "status"));
   bot.command("heirloom", (ctx) => act(ctx, "heirloom"));
   bot.command("retire", (ctx) => act(ctx, "retire", ctx.match ? { epitaph: ctx.match } : {}));

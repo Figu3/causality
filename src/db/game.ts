@@ -93,7 +93,14 @@ export class Game {
       }
 
       const out = step(before, req, now, systemRng());
-      await client.query(`update characters set data = $2, status = $3, updated_at = now() where id = $1`, [out.character.id, out.character, out.character.status]);
+      const awayUntil = out.character.errand ? new Date(out.character.errand.resolvesAt) : null;
+      await client.query(
+        `update characters set data = $2, status = $3, updated_at = now(),
+           away_notified = case when away_until is distinct from $4 then false else away_notified end,
+           away_until = $4
+         where id = $1`,
+        [out.character.id, out.character, out.character.status, awayUntil],
+      );
       for (const e of out.effects) await this.apply(client, e, now);
       const response = await this.decorate(client, out.character, out.response);
       await client.query("commit");
@@ -230,5 +237,17 @@ function rowToPlayer(x: Record<string, unknown>): Player {
 
 /** Fill fields added after a character was first stored. */
 function normalize(c: Character): Character {
-  return { ...c, revealed: c.revealed ?? [] };
+  return { ...c, revealed: c.revealed ?? [], errand: c.errand ?? null };
+}
+
+export interface AwayNotice { playerId: string; characterId: string; name: string; kind: string }
+
+/** Characters whose errand has resolved and who have not been told yet. Marks them told. */
+export async function dueErrands(pool: pg.Pool): Promise<AwayNotice[]> {
+  const r = await pool.query(
+    `update characters set away_notified = true
+     where status = 'alive' and away_until is not null and away_until <= now() and not away_notified
+     returning player_id, id, name, data->'errand'->>'kind' as kind`,
+  );
+  return r.rows.map((x) => ({ playerId: x.player_id, characterId: x.id, name: x.name, kind: x.kind ?? "errand" }));
 }

@@ -52,6 +52,17 @@ export interface CombatState {
 
 export type CharacterStatus = "alive" | "dead" | "retired";
 
+export type ErrandKind = "forage" | "scout" | "vigil" | "lodge";
+/** Something the character is doing while the player is away. Resolved lazily on the next action. */
+export interface Errand {
+  kind: ErrandKind;
+  startedAt: number;
+  resolvesAt: number;
+  seed: number;
+  floor: number;
+  roomId: string;
+}
+
 export interface DeathRecord {
   at: number;
   cause: string;
@@ -85,6 +96,7 @@ export interface Character {
   ascents: number[];
   /** hidden rooms this character has found, by room id */
   revealed: string[];
+  errand: Errand | null;
   status: CharacterStatus;
   death: DeathRecord | null;
 }
@@ -134,7 +146,9 @@ export interface GameEvent {
     | "corpse"
     | "heir_claim"
     | "estate"
-    | "heir_request";
+    | "heir_request"
+    | "errand_started"
+    | "errand_resolved";
   data: Record<string, unknown>;
 }
 export interface StateSnapshot {

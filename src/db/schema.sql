@@ -15,7 +15,10 @@ create table if not exists characters (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table characters add column if not exists away_until timestamptz;
+alter table characters add column if not exists away_notified boolean not null default false;
 create index if not exists characters_player_idx on characters(player_id);
+create index if not exists characters_away_idx on characters(away_until) where away_until is not null and not away_notified;
 create index if not exists characters_name_idx on characters(lower(name));
 
 create table if not exists hall_of_heroes (

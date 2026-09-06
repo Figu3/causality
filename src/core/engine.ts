@@ -1,15 +1,25 @@
 import { resolveTurn, startCombat, type CombatAction } from "./combat.js";
 import { computeEstate, isHeldPlace, type Estate } from "./estate.js";
 import { dayKey, generateFloor, CITY_FLOOR } from "./floor.js";
-import type { Rng } from "./rng.js";
+import { seeded, type Rng } from "./rng.js";
 import {
   ageAt, derived, effectiveStats, growthRate, isStat, baseStats,
   MAX_AGE, MIN_START_AGE, MAX_START_AGE, RETIREMENT_AGE,
 } from "./stats.js";
 import { STARTING_KIT } from "./content/ruins.js";
 import type {
-  Character, Choice, DeathRecord, FloorGraph, GameEvent, Item, Request, Response, Room, StateSnapshot,
+  Character, Choice, DeathRecord, ErrandKind, FloorGraph, GameEvent, Item, Request, Response, Room, StateSnapshot,
 } from "./types.js";
+import { TREASURE_ITEMS } from "./content/ruins.js";
+import { difficultyLevel } from "./floor.js";
+
+export const ERRANDS: Record<ErrandKind, { label: string; hours: number; cost: number; where: "rest" | "inn" | "any_safe" }> = {
+  forage: { label: "Forage", hours: 2, cost: 0, where: "any_safe" },
+  scout: { label: "Scout the halls", hours: 4, cost: 0, where: "any_safe" },
+  vigil: { label: "Keep vigil", hours: 8, cost: 0, where: "any_safe" },
+  lodge: { label: "Lodge for the night", hours: 6, cost: 5, where: "inn" },
+};
+const HOUR_MS = 3_600_000;
 
 export const BETA_TOP_FLOOR = 10;
 export const STARTING_SHARDS = 30;
@@ -39,7 +49,7 @@ export function newCharacter(id: string, playerId: string, name: string, startin
     id, playerId, name: trimmed, bornAt: now, startingAge, base, level: 1, xp: 0, unspent: 0,
     hp: d.maxHp, focus: d.focusPool, shards: STARTING_SHARDS,
     inventory: STARTING_KIT.map((i) => ({ ...i })), heirloomId: null, heir: null,
-    floor: 1, roomId: null, runDay: null, cleared: [], combat: null, kills: 0, ascents: [], revealed: [],
+    floor: 1, roomId: null, runDay: null, cleared: [], combat: null, kills: 0, ascents: [], revealed: [], errand: null,
     status: "alive", death: null,
   };
 }
@@ -199,6 +209,7 @@ function roomChoices(x: Ctx): Choice[] {
   if (r.type === "treasure" && !x.cleared(r.id)) out.push({ label: "Take", verb: "take" });
   if (r.type === "rest" && !x.cleared(r.id)) out.push({ label: "Rest", verb: "rest" });
   if (r.stair && x.c.floor < BETA_TOP_FLOOR && (r.type !== "boss" || x.cleared(r.id))) out.push({ label: "Climb", verb: "climb" });
+  out.push(...errandChoices(x));
   out.push({ label: "Examine", verb: "examine" }, { label: "Status", verb: "status" });
   return out;
 }
@@ -411,6 +422,113 @@ function setHeir(x: Ctx, args: Record<string, string>): StepResult {
   return look(x);
 }
 
+/* ------------------------------------------------------------------ errands */
+
+function fmtWait(ms: number): string {
+  const m = Math.max(1, Math.ceil(ms / 60_000));
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+}
+
+/** Where errands can be started: rest rooms anywhere, and any city room. Lodging only at an inn. */
+function errandChoices(x: Ctx): Choice[] {
+  const r = x.room();
+  const safe = r.type === "rest" || x.kind === "city";
+  if (!safe) return [];
+  const out: Choice[] = [];
+  for (const [kind, def] of Object.entries(ERRANDS) as [ErrandKind, (typeof ERRANDS)[ErrandKind]][]) {
+    if (def.where === "inn" && !(x.kind === "city" && r.type === "rest")) continue;
+    out.push({ label: `${def.label} (${def.hours}h)`, verb: "errand", args: { kind } });
+  }
+  return out;
+}
+
+function startErrand(x: Ctx, kind: string | undefined): StepResult {
+  const def = kind && (kind in ERRANDS) ? ERRANDS[kind as ErrandKind] : null;
+  if (!def || !errandChoices(x).some((c) => c.args?.kind === kind)) {
+    x.say("Not here, or not that.");
+    return look(x);
+  }
+  if (x.c.shards < def.cost) {
+    x.say(`That costs ${def.cost} shards. You have ${x.c.shards}.`);
+    return look(x);
+  }
+  const resolvesAt = x.now + def.hours * HOUR_MS;
+  x.c = {
+    ...x.c,
+    shards: x.c.shards - def.cost,
+    errand: { kind: kind as ErrandKind, startedAt: x.now, resolvesAt, seed: x.rng.int(1, 0x7fffffff), floor: x.c.floor, roomId: x.c.roomId ?? x.graph.entrance },
+  };
+  x.events.push({ type: "errand_started", data: { kind, resolvesAt } });
+  x.say(`${def.label}. Come back in ${fmtWait(def.hours * HOUR_MS)}. The tower will still be here.`);
+  x.choices = [{ label: "Look", verb: "look" }];
+  return x.done();
+}
+
+function busy(x: Ctx): StepResult {
+  const e = x.c.errand!;
+  x.say(`You are away: ${ERRANDS[e.kind].label.toLowerCase()}. Back in ${fmtWait(e.resolvesAt - x.now)}.`);
+  x.choices = [{ label: "Abandon", verb: "abandon" }, { label: "Status", verb: "status" }];
+  return x.done();
+}
+
+/**
+ * Settle a finished errand. Deterministic from the errand's seed. Errands can wound in the wild
+ * but can never kill: principle 4.
+ */
+function resolveErrand(x: Ctx): void {
+  const e = x.c.errand!;
+  const rng = seeded(e.seed);
+  const level = difficultyLevel(e.floor);
+  const lines: string[] = [];
+  let c: Character = { ...x.c, errand: null };
+  switch (e.kind) {
+    case "forage": {
+      const shards = 3 + level * 3 + rng.int(0, 6);
+      c = { ...c, shards: c.shards + shards };
+      lines.push(`You foraged. ${shards} shards' worth of salvage.`);
+      if (rng.chance(0.4)) {
+        const it = { ...rng.pick(TREASURE_ITEMS.filter((i) => i.kind === "consumable")) };
+        c = { ...c, inventory: [...c.inventory, it] };
+        lines.push(`You also found ${it.name}.`);
+      }
+      if (level > 0 && rng.chance(0.25)) {
+        const dmg = Math.min(c.hp - 1, Math.floor(x.d.maxHp * (0.1 + rng.next() * 0.15)));
+        if (dmg > 0) { c = { ...c, hp: c.hp - dmg }; lines.push(`Something found you first. You took ${dmg} and got away.`); }
+      }
+      break;
+    }
+    case "scout": {
+      const g = e.floor === x.c.floor ? x.graph : generateFloor(e.floor, x.graph.day);
+      const hidden = Object.values(g.rooms).find((r) => r.hidden && !c.revealed.includes(r.id));
+      if (hidden) {
+        c = { ...c, revealed: [...c.revealed, hidden.id] };
+        lines.push(`You scouted the halls and found what the builders hid: ${hidden.title}.`);
+      } else {
+        const xp = 8 + level * 4;
+        c = { ...c, xp: c.xp + xp };
+        lines.push("You scouted the halls. Nothing hidden here that you have not already found, but you know the floor better.");
+      }
+      break;
+    }
+    case "vigil": {
+      const xp = Math.round((10 + level * 3) * growthRate(x.age));
+      c = { ...c, focus: x.d.focusPool, xp: c.xp + xp };
+      lines.push("You kept vigil through the dark. Your focus is whole again.");
+      if (rng.chance(0.15)) lines.push("Near the end of it you saw something in the stone: a shape climbing, far above, that was not there when you looked again.");
+      break;
+    }
+    case "lodge": {
+      c = { ...c, hp: x.d.maxHp, focus: x.d.focusPool };
+      lines.push("You slept at the Last Lamp. You wake whole.");
+      break;
+    }
+  }
+  x.c = c;
+  x.events.push({ type: "errand_resolved", data: { kind: e.kind, lines } });
+  x.say(`*While you were away.* ${lines.join(" ")}`);
+  grantXp(x, 0);
+}
+
 /* ------------------------------------------------------------------ step */
 
 export function step(character: Character, req: Request, now: number, rng: Rng): StepResult {
@@ -422,6 +540,17 @@ export function step(character: Character, req: Request, now: number, rng: Rng):
     return x.done();
   }
   if (x.age >= MAX_AGE) return die(x, "of old age");
+
+  if (x.c.errand) {
+    if (req.verb === "abandon") {
+      x.c = { ...x.c, errand: null };
+      x.say("You abandon it and come back with nothing.");
+    } else if (x.now < x.c.errand.resolvesAt) {
+      return busy(x);
+    } else {
+      resolveErrand(x);
+    }
+  }
 
   // a new day, or a fresh character: start at the entrance of today's graph
   if (x.c.runDay !== x.graph.day || x.c.roomId === null || !x.graph.rooms[x.c.roomId]) {
@@ -454,6 +583,7 @@ export function step(character: Character, req: Request, now: number, rng: Rng):
     case "heirloom": return heirloom(x, args.item);
     case "heir": return setHeir(x, args);
     case "retire": return retire(x, args.epitaph);
+    case "errand": return startErrand(x, args.kind);
     default:
       x.say("You consider it, and think better of it.");
       return look(x);
