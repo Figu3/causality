@@ -1,7 +1,7 @@
 # Causality
 
 A hardcore text tower-climber played over Telegram. One shared world, one shared history, one
-life at a time.
+life at a time. Alpha bot: [@Causality_alphabot](https://t.me/Causality_alphabot).
 
 Most games reset. Causality does not. Rare, exceptional deeds become permanent, stacking,
 attributed changes to the world: a shortcut that stays open, a storm that never lifts, a boss that
