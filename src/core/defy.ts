@@ -30,15 +30,15 @@ export const FOCUS_COST = 10;
 
 /** Base difficulty per class. Social classes are harder than physical improvisation. */
 export const BASE_DC: Record<ActionClass, number> = {
-  negotiate: 13,
-  deceive: 12,
-  intimidate: 12,
-  sneak: 11,
-  tinker: 11,
-  inspire: 10,
-  investigate: 9,
-  evade: 10,
-  other: 12,
+  negotiate: 11,
+  deceive: 10,
+  intimidate: 10,
+  sneak: 9,
+  tinker: 9,
+  inspire: 8,
+  investigate: 7,
+  evade: 8,
+  other: 10,
 };
 
 /** Default governing stats when the model gives none or nonsense. */
@@ -54,8 +54,12 @@ export const DEFAULT_STATS: Record<ActionClass, [Stat, Stat]> = {
   other: ["cunning", "guile"],
 };
 
+/**
+ * A cautious attempt by a fresh character on floor 3 lands about half the time; audacity 3 on
+ * the same floor about a quarter. Bosses add five. Base stats give +3 on a d20.
+ */
 export function difficulty(cls: ActionClass, audacity: number, level: number, boss: boolean, inCombat: boolean): number {
-  return BASE_DC[cls] + audacity * 3 + level * 2 + (boss ? 5 : 0) + (inCombat ? 1 : 0);
+  return BASE_DC[cls] + audacity * 3 + level + (boss ? 5 : 0) + (inCombat ? 1 : 0);
 }
 
 /** Stat bonus: average of the two governing stats over 6, plus a cunning edge. Base 10s give +3. */

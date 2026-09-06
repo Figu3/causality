@@ -422,6 +422,23 @@ client, designer-ratified Chronicler.
 9. Additional clients (web, Discord, app); the 2D renderer if it ever earns its place.
 10. Monetisation. Parked until the loop proves out; nothing that touches stakes.
 
+## 15b. Decisions of 2026-09-06
+
+- **Combat gets telegraphs.** An enemy winds up in one line of text; attack, defend or feint each
+  beat one tell. Perception and cunning affect whether you see the tell. Queued after errands.
+- **Errands: the world acts while you are gone.** Forage, scout, keep vigil, or lodge at the
+  inn, started from any rest room or city room. They resolve lazily on the next action from a
+  stored seed, can wound in the wild but never kill, and the bot tells you when one has finished.
+  Shipped.
+- **NPC climbers to bootstrap the world.** A few hundred scripted climbers who play through the
+  same verbs API, openly labelled as what they are, never passed off as people. They die, leave
+  corpses, hold floors and found companies; their deeds are eligible for causality projects only
+  when no human deed qualifies. No authored prehistory: the first players write it.
+- **A public API with per-character keys** so anyone with a model can build a client or an agent.
+  Automating your own character is not cheating; identity is per character, not per client.
+- **Model routing:** the NUC llm-router on the daily cheaptokens.ai Venice key, OpenAI-compatible,
+  `LLM_BASE_URL` in the environment. Any endpoint with the same shape works.
+
 ## 16. Growth and monetisation
 
 The viral unit is a story about a real person with their name on it. Every loop below produces one.

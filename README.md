@@ -131,12 +131,13 @@ A daily digest ("Yesterday in the Tower") runs from day one and needs no model a
 
 ## Status
 
-Design is settled; the code is early. Build step 1 is done: character creation, the trial floor, the Landing, daily wild floors,
-hidden rooms, deterministic combat, death, heirs and heirlooms, corpses, the Telegram adapter.
-No model calls yet.
+Playable alpha on Telegram. Done: character creation, the trial floor, the Landing, daily wild
+floors, hidden rooms, deterministic combat, death, heirs and heirlooms, corpses, errands that
+resolve while you are away, and `Defy fate` with the Referee and the improvise log, running on
+any OpenAI-compatible model endpoint.
 
-Build order: `Defy fate` and the Referee, then groups, floor lords, war, and finally the
-Chronicler. See [design/spec-v2.md](design/spec-v2.md) for the full design and
+Next: telegraphed combat, groups, floor lords, war, NPC climbers, a public per-character API, and
+finally the Chronicler. See [design/spec-v2.md](design/spec-v2.md) for the full design and
 [design/telegram-v0-architecture.md](design/telegram-v0-architecture.md) for the architecture.
 
 ## Running it
