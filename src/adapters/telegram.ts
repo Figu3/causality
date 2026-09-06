@@ -38,11 +38,18 @@ function decode(data: string): { verb: string; args: Record<string, string> } {
 function keyboard(choices: Choice[]): InlineKeyboard | undefined {
   if (!choices.length) return undefined;
   const kb = new InlineKeyboard();
-  choices.forEach((c, i) => {
-    kb.text(c.label, encode(c));
-    const wide = c.label.length > 18;
-    if (wide || i % 2 === 1) kb.row();
-  });
+  // exits and long labels get a full row so the text is never truncated; short actions pair up
+  let inRow = 0;
+  for (const c of choices) {
+    const solo = c.verb === "move" || c.label.length > 14;
+    if (solo) {
+      if (inRow) { kb.row(); inRow = 0; }
+      kb.text(c.label, encode(c)).row();
+    } else {
+      kb.text(c.label, encode(c));
+      if (++inRow === 2) { kb.row(); inRow = 0; }
+    }
+  }
   return kb;
 }
 
