@@ -119,7 +119,7 @@ describe("the Referee (model side)", () => {
     const g = generateFloor(3, DAY);
     return { character: c, stats: baseStats(10), age: 20, floor: 3, floorKind: "wild", room: g.rooms[c.roomId!]!, enemy: { name: "a tomb rat", hp: 10, maxHp: 14, boss: false }, text: "I try to talk it down" };
   };
-  const cfg = { baseUrl: "http://x", apiKey: "k", model: "m", timeoutMs: 1000, veniceParams: true };
+  const cfg = { provider: "openai" as const, baseUrl: "http://x", apiKey: "k", model: "m", timeoutMs: 1000, veniceParams: true };
   const fake = (content: string, ok = true): typeof fetch => (async () => new Response(JSON.stringify({ model: "m", choices: [{ message: { content } }], usage: {} }), { status: ok ? 200 : 500 })) as unknown as typeof fetch;
 
   it("extracts JSON from prose and fences", () => {
