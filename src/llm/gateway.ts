@@ -21,16 +21,34 @@ export interface LlmResult {
   latencyMs: number;
 }
 
-export function configFromEnv(env: NodeJS.ProcessEnv = process.env): LlmConfig | null {
-  const baseUrl = env.LLM_BASE_URL;
+export type Role = "referee" | "narrator" | "chronicler";
+
+/**
+ * One config per role. `LLM_<ROLE>_*` overrides the shared `LLM_*` values, so the referee can
+ * stay on a cheap classifier while the narrator and chronicler use stronger models, on the same
+ * endpoint or a different one.
+ */
+export function configFromEnv(role: Role = "referee", env: NodeJS.ProcessEnv = process.env): LlmConfig | null {
+  const R = role.toUpperCase();
+  const pick = (k: string): string | undefined => env[`LLM_${R}_${k}`] ?? env[`LLM_${k}`];
+  const baseUrl = pick("BASE_URL");
   if (!baseUrl) return null;
   return {
     baseUrl: baseUrl.replace(/\/+$/, ""),
-    apiKey: env.LLM_API_KEY ?? "none",
-    model: env.LLM_MODEL ?? "router",
-    timeoutMs: Number(env.LLM_TIMEOUT_MS ?? 20_000),
-    veniceParams: (env.LLM_VENICE_PARAMS ?? "1") !== "0",
+    apiKey: pick("API_KEY") ?? "none",
+    model: pick("MODEL") ?? "router",
+    timeoutMs: Number(pick("TIMEOUT_MS") ?? 20_000),
+    veniceParams: (pick("VENICE_PARAMS") ?? "1") !== "0",
   };
+}
+
+export interface RoleConfigs {
+  referee: LlmConfig | null;
+  narrator: LlmConfig | null;
+  chronicler: LlmConfig | null;
+}
+export function roleConfigsFromEnv(env: NodeJS.ProcessEnv = process.env): RoleConfigs {
+  return { referee: configFromEnv("referee", env), narrator: configFromEnv("narrator", env), chronicler: configFromEnv("chronicler", env) };
 }
 
 export type Fetch = typeof fetch;

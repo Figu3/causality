@@ -5,7 +5,7 @@ import { systemRng } from "../core/rng.js";
 import { ageAt, effectiveStats } from "../core/stats.js";
 import { dayKey, generateFloor } from "../core/floor.js";
 import type { Character, Choice, DeathRecord, Item, Request, Response } from "../core/types.js";
-import type { Fetch, LlmConfig } from "../llm/gateway.js";
+import type { Fetch, RoleConfigs } from "../llm/gateway.js";
 import { narrate, propose } from "../llm/referee.js";
 
 export interface Player {
@@ -28,7 +28,7 @@ export class Game {
   constructor(
     private readonly pool: pg.Pool,
     private readonly now: () => number = Date.now,
-    private readonly llm: LlmConfig | null = null,
+    private readonly llm: RoleConfigs = { referee: null, narrator: null, chronicler: null },
     private readonly fetchImpl?: Fetch,
   ) {}
 
@@ -44,7 +44,7 @@ export class Game {
     const room = graph.rooms[before.roomId ?? graph.entrance] ?? graph.rooms[graph.entrance]!;
     const age = ageAt(before.startingAge, before.bornAt, now);
     const enemy = before.combat ? { name: before.combat.enemy.name, hp: before.combat.enemy.hp, maxHp: before.combat.enemy.maxHp, boss: before.combat.enemy.boss } : null;
-    const call = await propose(this.llm, { character: before, stats: effectiveStats(before.base, age), age, floor: before.floor, floorKind: graph.kind, room, enemy, text }, this.fetchImpl);
+    const call = await propose(this.llm.referee, { character: before, stats: effectiveStats(before.base, age), age, floor: before.floor, floorKind: graph.kind, room, enemy, text }, this.fetchImpl);
 
     const res = await this.act(playerId, { verb: "defy", args: { proposal: JSON.stringify(call.proposal) } });
     if (!res) return null;
@@ -52,7 +52,7 @@ export class Game {
     if (!ev) return res; // refused (no focus, etc.): nothing to log or narrate
 
     const d = ev.data as { roll: number; dc: number; success: boolean; result: string };
-    const narration = await narrate(this.llm, { intent: call.proposal.intent, attempt: text, result: d.result, success: d.success, room: room.title, enemy: enemy?.name ?? null }, this.fetchImpl);
+    const narration = await narrate(this.llm.narrator, { intent: call.proposal.intent, attempt: text, result: d.result, success: d.success, room: room.title, enemy: enemy?.name ?? null }, this.fetchImpl);
     await this.pool.query(
       `insert into improvise_log (character_id, player_id, floor, room_id, in_combat, text, proposal, roll, dc, success, result, narration, model, fallback, latency_ms)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,

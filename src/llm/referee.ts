@@ -59,7 +59,8 @@ export async function propose(cfg: LlmConfig | null, ctx: RefereeContext, fetchI
   return { proposal, raw: res?.text ?? null, model: res?.model ?? null, latencyMs: res?.latencyMs ?? 0, fallback: !parsed };
 }
 
-const NARRATOR = `You narrate one moment in Causality, a grim text tower-climber. Second person, present tense, two to four sentences, plain words, no headings, no lists, no dice, no numbers, no game terms. Describe only what the RESULT says happened; never add outcomes, loot, injuries or deaths that the result does not state. End on the situation as it now stands.`;
+const NARRATOR = `You narrate one moment in Causality, a grim text tower-climber. Second person, present tense, two or three short sentences, plain words, no headings, no lists, no dice, no numbers, no game terms.
+Describe only what the RESULT says happened. Never add outcomes, loot, injuries, deaths, objects or light sources the result does not state. The character does not move to another place unless the result says they did: finding a way through is not stepping through. Do not repeat the result's wording; render it. End on the situation as it now stands.`;
 
 export async function narrate(
   cfg: LlmConfig | null,
