@@ -9,6 +9,8 @@ export interface LlmConfig {
   apiKey: string;
   model: string;
   timeoutMs: number;
+  /** Venice-backed endpoints prepend ~1,500 tokens of their own system prompt unless told not to. */
+  veniceParams: boolean;
 }
 
 export interface LlmResult {
@@ -27,6 +29,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): LlmConfig |
     apiKey: env.LLM_API_KEY ?? "none",
     model: env.LLM_MODEL ?? "router",
     timeoutMs: Number(env.LLM_TIMEOUT_MS ?? 20_000),
+    veniceParams: (env.LLM_VENICE_PARAMS ?? "1") !== "0",
   };
 }
 
@@ -49,6 +52,7 @@ export async function chat(
       temperature: opts.temperature ?? 0.7,
     };
     if (opts.json) body.response_format = { type: "json_object" };
+    if (cfg.veniceParams) body.venice_parameters = { include_venice_system_prompt: false };
     const res = await fetchImpl(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${cfg.apiKey}` },
