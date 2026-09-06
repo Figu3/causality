@@ -1,5 +1,17 @@
+import type pg from "pg";
 import { Bot, InlineKeyboard, type Context } from "grammy";
-import type { Game } from "../db/game.js";
+import { setErrandCountdown, type Game } from "../db/game.js";
+import { ERRANDS } from "../core/engine.js";
+import type { ErrandKind } from "../core/types.js";
+
+export function countdownText(kind: string, resolvesAt: number, now: number): string {
+  const label = ERRANDS[kind as ErrandKind]?.label ?? "Errand";
+  const ms = resolvesAt - now;
+  if (ms <= 0) return `${label}: done. Open the tower to see what came of it.`;
+  const m = Math.ceil(ms / 60_000);
+  const left = m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
+  return `${label}: ${left} left.`;
+}
 import type { Choice, Response } from "../core/types.js";
 import { MAX_START_AGE, MIN_START_AGE } from "../core/stats.js";
 
@@ -53,10 +65,17 @@ function keyboard(choices: Choice[]): InlineKeyboard | undefined {
   return kb;
 }
 
+let pool: pg.Pool;
 async function render(ctx: Context, res: Response): Promise<void> {
   const kb = keyboard(res.choices);
   await ctx.reply(html(res.text), { parse_mode: "HTML", ...(kb ? { reply_markup: kb } : {}) });
   for (const e of res.events) {
+    if (e.type === "errand_started" && ctx.chat) {
+      const resolvesAt = Number(e.data.resolvesAt);
+      const kb = new InlineKeyboard().text("Check", "look|");
+      const m = await ctx.reply(countdownText(String(e.data.kind), resolvesAt, Date.now()), { reply_markup: kb });
+      await setErrandCountdown(pool, String(ctx.from?.id ?? ""), String(ctx.chat.id), m.message_id).catch(() => undefined);
+    }
     if (e.type === "death" || e.type === "retirement") {
       const card = [
         `<b>${esc(res.state.name)}</b>`,
@@ -75,7 +94,8 @@ function pid(ctx: Context): string {
   return String(ctx.from?.id ?? "");
 }
 
-export function createBot(token: string, game: Game): Bot {
+export function createBot(token: string, game: Game, db: pg.Pool): Bot {
+  pool = db;
   const bot = new Bot(token);
 
   const startCreation = async (ctx: Context): Promise<void> => {

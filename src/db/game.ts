@@ -290,3 +290,30 @@ export async function dueErrands(pool: pg.Pool): Promise<AwayNotice[]> {
   );
   return r.rows.map((x) => ({ playerId: x.player_id, characterId: x.id, name: x.name, kind: x.kind ?? "errand" }));
 }
+
+/** Attach the adapter's countdown message to a character's running errand. */
+export async function setErrandCountdown(pool: pg.Pool, playerId: string, chatId: string, messageId: number): Promise<void> {
+  await pool.query(
+    `update characters c set data = jsonb_set(c.data, '{errand,countdown}', $2::jsonb)
+     from players p where p.id = $1 and c.id = p.current_character_id and c.data->'errand' is not null and c.data->'errand' != 'null'::jsonb`,
+    [playerId, JSON.stringify({ chatId, messageId, lastEditAt: 0 })],
+  );
+}
+
+export interface Countdown { characterId: string; name: string; kind: string; resolvesAt: number; chatId: string; messageId: number; lastEditAt: number }
+
+/** Running errands that have a countdown message to keep fresh. */
+export async function runningCountdowns(pool: pg.Pool): Promise<Countdown[]> {
+  const r = await pool.query(
+    `select id, name, data->'errand' as errand from characters
+     where status = 'alive' and data->'errand' is not null and data->'errand' != 'null'::jsonb and data->'errand'->'countdown' is not null`,
+  );
+  return r.rows.map((x) => {
+    const e = x.errand as { kind: string; resolvesAt: number; countdown: { chatId: string; messageId: number; lastEditAt: number } };
+    return { characterId: x.id, name: x.name, kind: e.kind, resolvesAt: e.resolvesAt, chatId: e.countdown.chatId, messageId: e.countdown.messageId, lastEditAt: e.countdown.lastEditAt };
+  });
+}
+
+export async function touchCountdown(pool: pg.Pool, characterId: string, at: number): Promise<void> {
+  await pool.query(`update characters set data = jsonb_set(data, '{errand,countdown,lastEditAt}', to_jsonb($2::bigint)) where id = $1 and data->'errand'->'countdown' is not null`, [characterId, at]);
+}

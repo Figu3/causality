@@ -61,6 +61,8 @@ export interface Errand {
   seed: number;
   floor: number;
   roomId: string;
+  /** the adapter's live countdown message, if it posted one */
+  countdown?: { chatId: string; messageId: number; lastEditAt: number };
 }
 
 export interface DeathRecord {

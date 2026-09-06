@@ -37,13 +37,13 @@ describe("errands (while you were away)", () => {
     expect(w.response.choices.some((c) => c.verb === "errand")).toBe(false);
   });
 
-  it("while away, every verb reports the wait; abandoning returns you with nothing", () => {
+  it("while away, every verb reports the wait; a confirmed abandon on a vigil returns you with nothing", () => {
     const rng = seeded(3);
     let r = step(atInn(), { verb: "errand", args: { kind: "vigil" } }, T0, rng);
     r = step(r.character, { verb: "move", args: { to: "square" } }, T0 + H, rng);
     expect(r.character.roomId).toBe("inn");
     expect(r.response.text).toMatch(/away.*Back in 7h/);
-    r = step(r.character, { verb: "abandon" }, T0 + H, rng);
+    r = step(r.character, { verb: "abandon", args: { confirm: "1" } }, T0 + H, rng);
     expect(r.character.errand).toBeNull();
     expect(r.character.focus).toBeLessThan(200);
   });
@@ -88,5 +88,36 @@ describe("errands (while you were away)", () => {
       expect(a.character.status).toBe("alive");
       expect(a.character.shards).toBeGreaterThan(base.shards);
     }), { numRuns: 100 });
+  });
+});
+
+describe("interrupting an errand", () => {
+  it("asks first, then foraging pays in proportion to time spent and never more than the full yield", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 1e9 }), fc.double({ min: 0, max: 1, noNaN: true }), (seed, frac) => {
+      const g = generateFloor(4, "2026-09-06");
+      const rest = Object.values(g.rooms).find((x) => x.type === "rest");
+      if (!rest) return;
+      const base: Character = { ...newCharacter("c", "p", "Fen", 20, T0), floor: 4, roomId: rest.id, runDay: "2026-09-06" };
+      const started = step(base, { verb: "errand", args: { kind: "forage" } }, T0, seeded(seed)).character;
+      const at = T0 + Math.floor(frac * 2 * H);
+      const ask = step(started, { verb: "abandon" }, at, seeded(1));
+      expect(ask.character.errand).not.toBeNull();
+      expect(ask.response.choices.some((c) => c.verb === "abandon" && c.args?.confirm === "1")).toBe(true);
+      const done = step(started, { verb: "abandon", args: { confirm: "1" } }, at, seeded(1));
+      expect(done.character.errand).toBeNull();
+      const full = step(started, { verb: "look" }, T0 + 2 * H + 1, seeded(1)).character.shards - base.shards;
+      const partial = done.character.shards - base.shards;
+      expect(partial).toBeGreaterThanOrEqual(0);
+      expect(partial).toBeLessThanOrEqual(full);
+    }), { numRuns: 100 });
+  });
+  it("lodging cut short pays nothing and says so before you confirm", () => {
+    const rng = seeded(9);
+    const started = step(atInn(), { verb: "errand", args: { kind: "lodge" } }, T0, rng).character;
+    const ask = step(started, { verb: "abandon" }, T0 + H, rng);
+    expect(ask.response.text).toContain("counts for nothing");
+    const done = step(started, { verb: "abandon", args: { confirm: "1" } }, T0 + H, rng);
+    expect(done.character.hp).toBe(20);
+    expect(done.character.errand).toBeNull();
   });
 });

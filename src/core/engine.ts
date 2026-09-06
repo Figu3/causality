@@ -469,8 +469,32 @@ function startErrand(x: Ctx, kind: string | undefined): StepResult {
 function busy(x: Ctx): StepResult {
   const e = x.c.errand!;
   x.say(`You are away: ${ERRANDS[e.kind].label.toLowerCase()}. Back in ${fmtWait(e.resolvesAt - x.now)}.`);
-  x.choices = [{ label: "Abandon", verb: "abandon" }, { label: "Status", verb: "status" }];
+  x.choices = [{ label: "Check", verb: "look" }, { label: "Abandon", verb: "abandon" }];
   return x.done();
+}
+
+/** What cutting an errand short pays: foraging in proportion to time spent, everything else nothing. */
+export function abandonYield(kind: ErrandKind, elapsedMs: number, totalMs: number, level: number, seed: number): number {
+  if (kind !== "forage") return 0;
+  const full = 3 + level * 3 + seeded(seed).int(0, 6);
+  return Math.floor(full * Math.min(1, Math.max(0, elapsedMs / totalMs)));
+}
+
+function abandon(x: Ctx, confirmed: boolean): StepResult {
+  const e = x.c.errand!;
+  const total = e.resolvesAt - e.startedAt;
+  const pay = abandonYield(e.kind, x.now - e.startedAt, total, difficultyLevel(e.floor), e.seed);
+  if (!confirmed) {
+    x.say(e.kind === "forage"
+      ? `Come back now and you keep what you have gathered so far: ${pay} shards' worth. The rest stays out there.`
+      : `${ERRANDS[e.kind].label} only counts if you see it through. Come back now and it counts for nothing.`);
+    x.choices = [{ label: "Come back now", verb: "abandon", args: { confirm: "1" } }, { label: "Stay", verb: "look" }];
+    return x.done();
+  }
+  x.c = { ...x.c, errand: null, shards: x.c.shards + pay };
+  x.events.push({ type: "errand_resolved", data: { kind: e.kind, lines: [], abandoned: true } });
+  x.say(pay > 0 ? `You come back early with ${pay} shards' worth of salvage.` : "You come back early, with nothing to show for it.");
+  return look(x);
 }
 
 /**
@@ -654,9 +678,8 @@ export function step(character: Character, req: Request, now: number, rng: Rng):
   if (x.age >= MAX_AGE) return die(x, "of old age");
 
   if (x.c.errand) {
-    if (req.verb === "abandon") {
-      x.c = { ...x.c, errand: null };
-      x.say("You abandon it and come back with nothing.");
+    if (req.verb === "abandon" && x.now < x.c.errand.resolvesAt) {
+      return abandon(x, args.confirm === "1");
     } else if (x.now < x.c.errand.resolvesAt) {
       return busy(x);
     } else {

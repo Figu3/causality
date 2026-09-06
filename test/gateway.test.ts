@@ -36,3 +36,12 @@ describe("per-role model config", () => {
     expect(configFromEnv("narrator", { LLM_NARRATOR_BASE_URL: "http://x" })?.model).toBe("router");
   });
 });
+
+import { countdownText } from "../src/adapters/telegram.js";
+describe("countdown text", () => {
+  it("formats hours, minutes and done", () => {
+    expect(countdownText("forage", 1000 + 2 * 3_600_000, 1000)).toBe("Forage: 2h 00m left.");
+    expect(countdownText("vigil", 1000 + 7 * 60_000, 1000)).toBe("Keep vigil: 7m left.");
+    expect(countdownText("lodge", 1000, 2000)).toContain("done");
+  });
+});
