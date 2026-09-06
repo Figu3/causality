@@ -436,8 +436,11 @@ client, designer-ratified Chronicler.
   when no human deed qualifies. No authored prehistory: the first players write it.
 - **A public API with per-character keys** so anyone with a model can build a client or an agent.
   Automating your own character is not cheating; identity is per character, not per client.
-- **Model routing:** the NUC llm-router on the daily cheaptokens.ai Venice key, OpenAI-compatible,
-  `LLM_BASE_URL` in the environment. Any endpoint with the same shape works.
+- **Model routing:** one model per role through the NUC llm-router on the daily cheaptokens.ai
+  Venice key. Referee: Mistral Small (classification, every attempt). Narrator: Claude Sonnet 5
+  (the text players read; chosen over Mistral in a side-by-side on 2026-09-06 because it never
+  invents outcomes the engine did not produce). Chronicler: Claude Sonnet 5 (weekly). The gateway
+  also speaks the Anthropic API directly if a role is ever pointed at it.
 
 ## 16. Growth and monetisation
 
