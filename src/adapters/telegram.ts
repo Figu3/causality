@@ -147,7 +147,7 @@ export function createBot(token: string, game: Game): Bot {
       try {
         const c = await game.createCharacter(pid(ctx), s.name, age);
         creations.delete(pid(ctx));
-        await ctx.reply(`${c.name}, ${age}, begins the climb. You have ${c.shards} shards and ${c.inventory.map((i) => i.name).join(", ")}.\n\nName an heir early: /heir. Choose what outlives you: /heirloom.`);
+        await ctx.reply(`${c.name}, ${age}, begins the climb. You have ${c.shards} shards and ${c.inventory.map((i) => i.name).join(", ")}.`);
         await act(ctx, "look");
       } catch (e) {
         await ctx.reply((e as Error).message);

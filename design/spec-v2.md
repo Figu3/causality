@@ -95,8 +95,10 @@ the character dies. Two kinds:
   estate. This is the game's invite path (section 16).
 
 Dying **unprepared** (no accepted heir): shards go to the family vault, or are burned if there is
-no family; the chosen item follows the held-place rule; nothing else passes. Marriage and
-apprenticeship as further ways to make heirs are deferred.
+no family; the chosen item follows the held-place rule; nothing else passes. Heirs are not mentioned at
+character creation: the mechanic is introduced at the Landing's upper stair, the gate to the wild,
+where it first matters (decided 2026-09-06). Marriage and apprenticeship as further ways to make
+heirs are deferred.
 
 **Estate on death or retirement:**
 

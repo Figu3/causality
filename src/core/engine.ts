@@ -200,6 +200,7 @@ function describeRoom(x: Ctx): void {
   if (r.stair) {
     if (x.c.floor >= BETA_TOP_FLOOR) x.say("The stair beyond is sealed. The tower continues above, and the stars are further than you thought.");
     else if (r.type !== "boss" || x.cleared(r.id)) x.say("The stair up is open.");
+    if (x.c.floor === CITY_FLOOR && !x.c.heir) x.say("Climbers name an heir before this gate. Above it, what you carry passes to them or to no one: /heir <name>, or /heir @someone not yet in the tower. Choose what outlives you with /heirloom.");
   }
 }
 
@@ -366,7 +367,7 @@ function climb(x: Ctx): StepResult {
   const y = new Ctx(x.c, x.now, x.rng);
   y.events = x.events; y.effects = x.effects; y.text = x.text;
   if (y.c.floor === CITY_FLOOR) y.say("You climb out of the trial and into lamplight. The Landing. A held place: here, what you carry passes to your heir.");
-  else if (y.c.floor === CITY_FLOOR + 1) y.say(`You climb past the town wall. Floor ${y.c.floor}. This is the wild: from here on, the tower keeps what it takes.`);
+  else if (y.c.floor === CITY_FLOOR + 1) y.say(`You climb past the town wall. Floor ${y.c.floor}. This is the wild: from here on, the tower keeps what it takes.${y.c.heir ? "" : " You have named no heir. If you die up here, everything you are is lost."}`);
   else y.say(`You climb. Floor ${y.c.floor}.`);
   return enter(y, y.graph.entrance, null);
 }
