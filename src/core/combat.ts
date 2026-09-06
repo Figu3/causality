@@ -6,7 +6,9 @@ export type CombatAction =
   | { kind: "attack" }
   | { kind: "defend" }
   | { kind: "use"; itemId: string }
-  | { kind: "flee" };
+  | { kind: "flee" }
+  /** the player's turn was spent elsewhere (a Defy fate attempt); the enemy still answers */
+  | { kind: "pass" };
 
 export type CombatOutcome = "ongoing" | "won" | "fled" | "died";
 
@@ -105,6 +107,8 @@ export function resolveTurn(
       lines.push(`You use ${it.name} and recover ${heal}.`);
       break;
     }
+    case "pass":
+      break;
     case "flee": {
       if (rng.chance(fleeChance(d.initiative, s.enemy.pursuit))) {
         lines.push(`You break away from ${s.enemy.name}.`);

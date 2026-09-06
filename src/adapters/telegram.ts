@@ -154,6 +154,10 @@ export function createBot(token: string, game: Game): Bot {
       }
       return;
     }
+    if (verb === "defy_prompt") {
+      await ctx.reply("Take control of your destiny. What do you do?", { reply_markup: { force_reply: true, input_field_placeholder: "I try to..." } });
+      return;
+    }
     await act(ctx, verb, args);
   });
 
@@ -171,7 +175,13 @@ export function createBot(token: string, game: Game): Bot {
     const map: Record<string, string> = { look: "look", l: "look", status: "status", attack: "attack", a: "attack", defend: "defend", flee: "flee", run: "flee", rest: "rest", take: "take", loot: "take", climb: "climb", up: "climb", examine: "examine", x: "examine" };
     const verb = map[t];
     if (verb) return act(ctx, verb);
-    return ctx.reply("Not a thing you can do here, yet. Use the buttons, or /look.");
+    // anything else a living character types is an attempt to defy fate
+    const text = ctx.message.text.trim();
+    if (text.length < 3) return ctx.reply("Say what you do.");
+    await ctx.replyWithChatAction("typing").catch(() => undefined);
+    const res = await game.defyFate(pid(ctx), text);
+    if (!res) return ctx.reply("Nobody living to defy anything. /start");
+    await render(ctx, res);
   });
 
   bot.catch((err) => {

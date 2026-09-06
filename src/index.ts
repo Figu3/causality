@@ -2,6 +2,7 @@ import "dotenv/config";
 import pg from "pg";
 import { createBot } from "./adapters/telegram.js";
 import { Game, dueErrands } from "./db/game.js";
+import { configFromEnv } from "./llm/gateway.js";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const dbUrl = process.env.DATABASE_URL;
@@ -9,7 +10,9 @@ if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not set");
 if (!dbUrl) throw new Error("DATABASE_URL is not set");
 
 const pool = new pg.Pool({ connectionString: dbUrl });
-const game = new Game(pool);
+const llm = configFromEnv();
+if (!llm) console.warn("causality: LLM_BASE_URL not set, Defy fate runs on templates only");
+const game = new Game(pool, Date.now, llm);
 const bot = createBot(token, game);
 
 await bot.api.setMyCommands([

@@ -64,3 +64,25 @@ create table if not exists achievements (
   at timestamptz not null default now()
 );
 create unique index if not exists achievements_first_idx on achievements(key) where key like 'first:%';
+
+-- every Defy fate attempt: the Chronicler's primary input
+create table if not exists improvise_log (
+  id bigserial primary key,
+  character_id text not null references characters(id),
+  player_id text not null,
+  floor int not null,
+  room_id text not null,
+  in_combat boolean not null,
+  text text not null,
+  proposal jsonb not null,
+  roll int not null,
+  dc int not null,
+  success boolean not null,
+  result text not null,
+  narration text,
+  model text,
+  fallback boolean not null default false,
+  latency_ms int not null default 0,
+  at timestamptz not null default now()
+);
+create index if not exists improvise_log_at_idx on improvise_log(at);

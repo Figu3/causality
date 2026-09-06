@@ -1,4 +1,4 @@
-import { resolveTurn, startCombat, type CombatAction } from "./combat.js";
+import { resolveTurn, startCombat, weaponOf, type CombatAction } from "./combat.js";
 import { computeEstate, isHeldPlace, type Estate } from "./estate.js";
 import { dayKey, generateFloor, CITY_FLOOR } from "./floor.js";
 import { seeded, type Rng } from "./rng.js";
@@ -11,6 +11,7 @@ import type {
   Character, Choice, DeathRecord, ErrandKind, FloorGraph, GameEvent, Item, Request, Response, Room, StateSnapshot,
 } from "./types.js";
 import { TREASURE_ITEMS } from "./content/ruins.js";
+import { FOCUS_COST, bonus, difficulty, sanitize, type Proposal } from "./defy.js";
 import { difficultyLevel } from "./floor.js";
 
 export const ERRANDS: Record<ErrandKind, { label: string; hours: number; cost: number; where: "rest" | "inn" | "any_safe" }> = {
@@ -210,7 +211,7 @@ function roomChoices(x: Ctx): Choice[] {
   if (r.type === "rest" && !x.cleared(r.id)) out.push({ label: "Rest", verb: "rest" });
   if (r.stair && x.c.floor < BETA_TOP_FLOOR && (r.type !== "boss" || x.cleared(r.id))) out.push({ label: "Climb", verb: "climb" });
   out.push(...errandChoices(x));
-  out.push({ label: "Examine", verb: "examine" }, { label: "Status", verb: "status" });
+  out.push({ label: "Defy fate", verb: "defy_prompt" }, { label: "Examine", verb: "examine" }, { label: "Status", verb: "status" });
   return out;
 }
 
@@ -226,7 +227,7 @@ function combatPrompt(x: Ctx): StepResult {
   x.say(`${s.enemy.name} (${s.enemy.hp}/${s.enemy.maxHp}). You: ${x.c.hp}/${x.d.maxHp}.`);
   x.choices = [{ label: "Attack", verb: "attack" }, { label: "Defend", verb: "defend" }];
   for (const it of x.c.inventory) if (it.kind === "consumable") x.choices.push({ label: `Use ${it.name}`, verb: "use", args: { item: it.id } });
-  x.choices.push({ label: "Flee", verb: "flee" });
+  x.choices.push({ label: "Defy fate", verb: "defy_prompt" }, { label: "Flee", verb: "flee" });
   return x.done();
 }
 
@@ -529,6 +530,116 @@ function resolveErrand(x: Ctx): void {
   grantXp(x, 0);
 }
 
+/* ------------------------------------------------------------------ defy fate */
+
+export interface DefyOutcome {
+  proposal: Proposal;
+  roll: number;
+  dc: number;
+  success: boolean;
+  /** what actually happened, in the engine's words; the model narrates from this */
+  result: string;
+  focusSpent: number;
+}
+
+/**
+ * Resolve a Referee proposal. Bounded outcome table per action class. The model proposed;
+ * this decides. It can open doors and end fights without killing; it can never kill the
+ * character, grant unbounded shards, or change the floor. In combat it is a turn: the enemy
+ * still answers unless the outcome removed it.
+ */
+function defy(x: Ctx, args: Record<string, string>): StepResult {
+  if (x.c.focus < FOCUS_COST) {
+    x.say(`You reach for something more and find nothing left. Rest, or keep vigil. (Focus ${x.c.focus}/${x.d.focusPool}.)`);
+    return x.c.combat ? combatPrompt(x) : look(x);
+  }
+  let parsed: unknown = null;
+  try { parsed = args.proposal ? JSON.parse(args.proposal) : null; } catch { parsed = null; }
+  const p = sanitize(parsed, isStat);
+  const r = x.room();
+  const s = x.c.combat;
+  const enemy = s?.enemy ?? null;
+  const level = difficultyLevel(x.c.floor);
+  const dc = difficulty(p.action_class, p.audacity, level, enemy?.boss ?? false, !!s);
+  const roll = x.rng.int(1, 20) + bonus(x.stats, p.governing_stats);
+  const success = roll >= dc;
+  x.c = { ...x.c, focus: x.c.focus - FOCUS_COST };
+  let result = "";
+  let enemyGone = false;
+
+  if (success) {
+    switch (p.action_class) {
+      case "negotiate":
+        if (enemy && !enemy.boss) { enemyGone = true; result = `${enemy.name} hears you out and lets you pass. No blood, no spoils.`; }
+        else if (enemy) result = `${enemy.name} listens, and for a moment does not strike.`;
+        else result = "There is nobody here to bargain with, but you rehearse the words, and they will come easier next time.";
+        break;
+      case "intimidate":
+        if (enemy && !enemy.boss) { enemyGone = true; x.c = { ...x.c, shards: x.c.shards + Math.floor(enemy.shards / 2) }; result = `${enemy.name} breaks and runs, leaving ${Math.floor(enemy.shards / 2)} shards in its haste.`; }
+        else if (enemy) result = `${enemy.name} hesitates. You gain a breath.`;
+        else result = "You square your shoulders at the empty room. It does not argue.";
+        break;
+      case "deceive":
+        if (enemy) { const dmg = Math.max(2, (weaponOf(x.c)?.damage ?? 2) * 2 + Math.floor(x.stats.might / 4)); s!.enemy.hp = Math.max(0, s!.enemy.hp - dmg); result = `${enemy.name} takes the bait. You strike it for ${dmg} while it looks the wrong way.`; }
+        else result = "A good lie needs a listener. You file it away.";
+        break;
+      case "sneak":
+      case "evade":
+        if (enemy) { enemyGone = true; result = `You slip past ${enemy.name} and it loses you in the dark. It is still here, for whoever comes next.`; }
+        else result = "You move without a sound, and nothing notices.";
+        break;
+      case "tinker":
+        if (enemy) { const dmg = Math.floor(enemy.maxHp * 0.25); s!.enemy.hp = Math.max(0, s!.enemy.hp - dmg); result = `Whatever you rigged, it works. ${enemy.name} takes ${dmg}.`; }
+        else result = revealAdjacent(x) ?? "You take the place apart in your head and put it back together. Nothing to use, this time.";
+        break;
+      case "investigate":
+        result = revealAdjacent(x) ?? "You read the room like a page. Nothing hidden here that you have not already found.";
+        if (!result.includes("way through")) x.c = { ...x.c, xp: x.c.xp + 5 };
+        break;
+      case "inspire": {
+        const heal = Math.min(Math.floor(x.d.maxHp * 0.15), x.d.maxHp - x.c.hp);
+        x.c = { ...x.c, hp: x.c.hp + heal };
+        result = heal > 0 ? `You find something in yourself you had not spent. You recover ${heal}.` : "You steady yourself. You were already steady.";
+        break;
+      }
+      case "other":
+        x.c = { ...x.c, xp: x.c.xp + 5 + p.audacity * 3 };
+        result = "It does not work the way you meant, but it works: you learn something the tower did not intend to teach.";
+        break;
+    }
+  } else {
+    result = enemy ? `It does not land. ${enemy.name} is not impressed.` : "Nothing comes of it. The tower keeps its counsel.";
+  }
+
+  x.events.push({ type: "defy", data: { proposal: p, roll, dc, success, result, focusSpent: FOCUS_COST } });
+
+  if (s && enemyGone) {
+    const back = r.exits[0] ?? x.graph.entrance;
+    x.c = { ...x.c, combat: null };
+    if (p.action_class === "sneak" || p.action_class === "evade") x.c = { ...x.c, roomId: back };
+    else x.markCleared(r.id);
+    x.say(result);
+    x.choices = roomChoices(x);
+    return x.done();
+  }
+  if (s) {
+    x.say(result);
+    // the attempt was the turn; the enemy answers (or falls, if the attempt finished it)
+    return combat(x, { kind: "pass" });
+  }
+  x.say(result);
+  x.choices = roomChoices(x);
+  return x.done();
+}
+
+function revealAdjacent(x: Ctx): string | null {
+  const r = x.room();
+  const hidden = r.exits.map((e) => x.graph.rooms[e]!).find((n) => n.hidden && !x.revealed(n.id));
+  if (!hidden) return null;
+  x.c = { ...x.c, revealed: [...x.c.revealed, hidden.id] };
+  return `A draught where there should be none. You find a way through, to ${hidden.title}.`;
+}
+
 /* ------------------------------------------------------------------ step */
 
 export function step(character: Character, req: Request, now: number, rng: Rng): StepResult {
@@ -565,6 +676,7 @@ export function step(character: Character, req: Request, now: number, rng: Rng):
       case "defend": return combat(x, { kind: "defend" });
       case "flee": return combat(x, { kind: "flee" });
       case "use": return combat(x, { kind: "use", itemId: args.item ?? "" });
+      case "defy": return defy(x, args);
       default:
         x.say("Not now. Something is trying to kill you.");
         return combatPrompt(x);
@@ -584,6 +696,7 @@ export function step(character: Character, req: Request, now: number, rng: Rng):
     case "heir": return setHeir(x, args);
     case "retire": return retire(x, args.epitaph);
     case "errand": return startErrand(x, args.kind);
+    case "defy": return defy(x, args);
     default:
       x.say("You consider it, and think better of it.");
       return look(x);

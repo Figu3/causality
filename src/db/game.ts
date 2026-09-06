@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { newCharacter, snapshot, step, type SideEffect } from "../core/engine.js";
 import { systemRng } from "../core/rng.js";
+import { ageAt, effectiveStats } from "../core/stats.js";
+import { dayKey, generateFloor } from "../core/floor.js";
 import type { Character, Choice, DeathRecord, Item, Request, Response } from "../core/types.js";
+import type { Fetch, LlmConfig } from "../llm/gateway.js";
+import { narrate, propose } from "../llm/referee.js";
 
 export interface Player {
   id: string;
@@ -21,7 +25,42 @@ type Q = pg.PoolClient | pg.Pool;
  * the result and applies the engine's side effects. Nothing here knows about Telegram.
  */
 export class Game {
-  constructor(private readonly pool: pg.Pool, private readonly now: () => number = Date.now) {}
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly now: () => number = Date.now,
+    private readonly llm: LlmConfig | null = null,
+    private readonly fetchImpl?: Fetch,
+  ) {}
+
+  /**
+   * Defy fate. The model classifies the player's sentence (outside any transaction), the pure
+   * engine resolves it, then the model narrates what actually happened. Every attempt is logged.
+   */
+  async defyFate(playerId: string, text: string): Promise<Response | null> {
+    const before = await this.currentCharacter(playerId);
+    if (!before || before.status !== "alive") return null;
+    const now = this.now();
+    const graph = generateFloor(before.floor, dayKey(now));
+    const room = graph.rooms[before.roomId ?? graph.entrance] ?? graph.rooms[graph.entrance]!;
+    const age = ageAt(before.startingAge, before.bornAt, now);
+    const enemy = before.combat ? { name: before.combat.enemy.name, hp: before.combat.enemy.hp, maxHp: before.combat.enemy.maxHp, boss: before.combat.enemy.boss } : null;
+    const call = await propose(this.llm, { character: before, stats: effectiveStats(before.base, age), age, floor: before.floor, floorKind: graph.kind, room, enemy, text }, this.fetchImpl);
+
+    const res = await this.act(playerId, { verb: "defy", args: { proposal: JSON.stringify(call.proposal) } });
+    if (!res) return null;
+    const ev = res.events.find((e) => e.type === "defy");
+    if (!ev) return res; // refused (no focus, etc.): nothing to log or narrate
+
+    const d = ev.data as { roll: number; dc: number; success: boolean; result: string };
+    const narration = await narrate(this.llm, { intent: call.proposal.intent, attempt: text, result: d.result, success: d.success, room: room.title, enemy: enemy?.name ?? null }, this.fetchImpl);
+    await this.pool.query(
+      `insert into improvise_log (character_id, player_id, floor, room_id, in_combat, text, proposal, roll, dc, success, result, narration, model, fallback, latency_ms)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [before.id, playerId, before.floor, room.id, !!before.combat, text.slice(0, 500), call.proposal, d.roll, d.dc, d.success, d.result, narration, call.model, call.fallback, call.latencyMs],
+    ).catch((err) => console.error("improvise_log", err));
+    if (narration) return { ...res, text: res.text.replace(d.result, narration) };
+    return res;
+  }
 
   async getOrCreatePlayer(id: string, username: string | null): Promise<Player> {
     const r = await this.pool.query(

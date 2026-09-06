@@ -148,7 +148,8 @@ export interface GameEvent {
     | "estate"
     | "heir_request"
     | "errand_started"
-    | "errand_resolved";
+    | "errand_resolved"
+    | "defy";
   data: Record<string, unknown>;
 }
 export interface StateSnapshot {
