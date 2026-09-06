@@ -93,7 +93,7 @@ describe("game service against postgres", async () => {
     const dead = await game.act(P1, { verb: "look" });
     expect(dead?.events.some((e) => e.type === "corpse")).toBe(true);
 
-    const looter = (await game.currentCharacter(P2))!;
+    const looter = await game.createCharacter(P2, "Fenn", 20); // Brenna is long dead by now
     await setPlace(looter.id, 3);
     const seen = await game.act(P2, { verb: "look" });
     expect(seen?.text).toContain("corpse marker");
