@@ -22,6 +22,8 @@ describe("game service against postgres", async () => {
 
   beforeAll(async () => {
     await pool.query(readFileSync("src/db/schema.sql", "utf8"));
+    // only ever wipe a local dev database
+    if (/localhost|127\.0\.0\.1/.test(url)) await pool.query("truncate players, characters, hall_of_heroes, corpses, heir_claims, achievements cascade");
   });
   afterAll(async () => { await pool.end(); });
 
@@ -93,7 +95,9 @@ describe("game service against postgres", async () => {
     const dead = await game.act(P1, { verb: "look" });
     expect(dead?.events.some((e) => e.type === "corpse")).toBe(true);
 
-    const looter = await game.createCharacter(P2, "Fenn", 20); // Brenna is long dead by now
+    const P4 = `t4-${Date.now()}`;
+    await game.getOrCreatePlayer(P4, "four");
+    const looter = await game.createCharacter(P4, "Fenn", 20);
     await setPlace(looter.id, 3);
     const seen = await game.act(P2, { verb: "look" });
     expect(seen?.text).toContain("corpse marker");
