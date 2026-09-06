@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Causality mark: one line rising and branching into many">
+<rect width="512" height="512" fill="#f4f1ea"/>
+<g transform="translate(256 256) scale(4.4)" stroke="#1a1a1a">
+<g fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+<path d="M0 38 V14"/>
+<path d="M0 14 C0 0 -16 6 -20 -14"/>
+<path d="M0 14 C0 0 16 6 20 -14"/>
+<path d="M-20 -14 C-20 -24 -30 -22 -32 -38"/>
+<path d="M-20 -14 C-20 -24 -10 -22 -8 -38"/>
+<path d="M20 -14 C20 -24 30 -22 32 -38"/>
+<circle fill="#1a1a1a" stroke="none" cx="0" cy="14" r="6.5"/>
+<circle fill="#1a1a1a" stroke="none" cx="-20" cy="-14" r="6.5"/>
+<circle fill="#1a1a1a" stroke="none" cx="20" cy="-14" r="6.5"/>
+</g>
+</g>
+</svg>

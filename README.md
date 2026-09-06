@@ -1,5 +1,7 @@
 # Causality
 
+<img src="assets/logo.svg#gh-light-mode-only" alt="Causality mark" width="96"><img src="assets/logo-dark.svg#gh-dark-mode-only" alt="Causality mark" width="96">
+
 A hardcore text tower-climber played over Telegram. One shared world, one shared history, one
 life at a time. Alpha bot: [@Causality_alphabot](https://t.me/Causality_alphabot).
 
@@ -153,3 +155,10 @@ npm run dev
 
 The game core (`src/core`) is a pure library with no I/O: `{verb, args}` in, `{text, choices,
 events, state}` out. Telegram is the first adapter, not the only one.
+
+## Mark
+
+The logo is one line rising and branching into many: a single deed, then its consequences,
+drawn as a tower. Sources live in `assets/`: `logo.svg` (ink on transparent), `logo-dark.svg`
+(for dark grounds), and `avatar-dark-512.png` / `avatar-light-512.png` for the Telegram bot
+picture and social previews. The mark is designed to survive a 40px circular crop.
