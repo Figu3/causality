@@ -43,7 +43,7 @@ export class Game {
       `select c.data from players p join characters c on c.id = p.current_character_id where p.id = $1`,
       [playerId],
     );
-    return r.rows[0] ? (r.rows[0].data as Character) : null;
+    return r.rows[0] ? normalize(r.rows[0].data as Character) : null;
   }
 
   async createCharacter(playerId: string, name: string, startingAge: number): Promise<Character> {
@@ -83,7 +83,7 @@ export class Game {
         [playerId],
       );
       if (!r.rows[0]) { await client.query("rollback"); return null; }
-      const before = r.rows[0].data as Character;
+      const before = normalize(r.rows[0].data as Character);
       const now = this.now();
 
       if (req.verb === "loot") {
@@ -119,7 +119,7 @@ export class Game {
         break;
       case "heir_transfer": {
         const r = await q.query(`select data from characters where id = $1 for update`, [e.toCharacterId]);
-        const heir = r.rows[0]?.data as Character | undefined;
+        const heir = r.rows[0] ? normalize(r.rows[0].data as Character) : undefined;
         if (heir && heir.status === "alive") {
           const upd = { ...heir, shards: heir.shards + e.shards, inventory: e.item ? [...heir.inventory, e.item] : heir.inventory };
           await q.query(`update characters set data = $2, updated_at = now() where id = $1`, [heir.id, upd]);
@@ -226,4 +226,9 @@ function rowToPlayer(x: Record<string, unknown>): Player {
     currentCharacterId: (x.current_character_id as string | null) ?? null,
     pendingInheritance: (x.pending_inheritance as Player["pendingInheritance"]) ?? null,
   };
+}
+
+/** Fill fields added after a character was first stored. */
+function normalize(c: Character): Character {
+  return { ...c, revealed: c.revealed ?? [] };
 }

@@ -71,12 +71,18 @@ discovered, with hidden achievement-based requirements, and you can hold more th
 
 ## The tower
 
-The beta is ten floors. The floor 10 boss can be beaten; the stair beyond it is sealed, and the
-tower visibly continues above. Opening that gate, when floors 11 to 20 ship, will itself be a
-causality project.
+**Floor 1 is the trial.** Nothing here can kill you: lose a fight and you wake at the stair,
+bruised and whole. It teaches the verbs. Somewhere on it, behind a wall you have to find, waits the
+Warden of the Threshold, harder than anything on floor 10. Come back for it when you are ready.
 
-Floors 1 and 2 are protected: the Chronicler cannot place taxes or hazards there, so the entry ramp
-stays stable while the tower above it mutates.
+**Floor 2 is the Landing**, a town climbers built in the ruins: a market, an inn, a shrine, the
+Hall of Heroes, and the stair up. No enemies above ground. It is a held place: retire here, die
+here and your heirloom passes. Something lives under the well.
+
+**Floor 3 and up is the wild.** The tower keeps what it takes. A boss guards every stair. The beta
+is ten floors: the floor 10 boss can be beaten, the stair beyond it is sealed, and the tower
+visibly continues above. Opening that gate, when floors 11 to 20 ship, will itself be a causality
+project.
 
 ## Groups
 
@@ -125,8 +131,8 @@ A daily digest ("Yesterday in the Tower") runs from day one and needs no model a
 
 ## Status
 
-Design is settled; the code is early. Build step 1 is done: character creation, daily floors,
-deterministic combat, death, heirs and heirlooms, corpses, the Telegram adapter, floors 1 to 10.
+Design is settled; the code is early. Build step 1 is done: character creation, the trial floor, the Landing, daily wild floors,
+hidden rooms, deterministic combat, death, heirs and heirlooms, corpses, the Telegram adapter.
 No model calls yet.
 
 Build order: `Defy fate` and the Referee, then groups, floor lords, war, and finally the

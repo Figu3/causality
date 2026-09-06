@@ -120,25 +120,42 @@ not) to the Hall of Heroes. Achievements are preserved on the character record.
 
 ## 5. The tower (beta: floors 1 to 10)
 
-**Floor state is global; rooms are instanced.** A floor has: holder (lord and their group), tax,
-active modifiers from causality projects, structures (v0: shrines only), monuments, and a boss
-slot. Each day a seed generates the floor's room graph (5 to 20 rooms; types: combat, puzzle,
-treasure, trap, rest, shop, event; graph-based connections with secret paths, shortcuts and
-one-way passages). Each player walks their own instance of that day's graph. Backtracking is
-allowed.
+Three kinds of floor. Decided 2026-09-06.
+
+**Floor 1, the trial.** Nothing here can kill you: a lost fight or a sprung trap puts you back at
+the stair at half health, intact. It teaches the verbs. The stair up is open from the start. A
+hidden room, found by examining, holds **the Warden of the Threshold**, harder than anything on
+floor 10. Beating it is a deed and an achievement; it can only be done by a strong character who
+came back down. Old age still applies on the trial floor: time is not a hazard.
+
+**Floor 2, the city (the Landing).** Fixed rooms: the gate, the market square, the inn (rest), the
+shrine, the Hall of Heroes, and the upper stair, which is open. No enemies or traps above ground.
+The city is a held place: retire here, die here and your heirloom passes. A hidden shaft beneath
+the well holds a second secret boss, about as hard as a mid-tower Guardian, and lethal.
+
+**Floors 3 and up, the wild.** Difficulty starts at floor 3 (level 1) and climbs to floor 10
+(level 8). Floor state is global; rooms are instanced. A floor has: holder (lord and their
+group), tax, active modifiers from causality projects, structures (v0: shrines only), monuments,
+and a boss slot. Each day a seed generates the room graph (6 to 8 rooms in beta; types: combat,
+puzzle, treasure, trap, rest, shop, event; graph-based with secret paths, shortcuts and one-way
+passages). The boss guards the stair. Each player walks their own instance of that day's graph.
+Backtracking is allowed.
+
+**Hidden rooms.** A room can be hidden: not offered as an exit until the character reveals it
+with a perception check from an adjacent room (`examine`). Reveals are per character. `Defy fate`
+becomes a second way to find them later.
 
 **Nightly prose batch.** A small model writes the day's room descriptions, riddles and event
 choices once per floor, cached for every player. It never touches state.
 
-**Entry cost:** `10 + floor*5` shards, plus the lord's tax.
+**Entry cost:** `10 + floor*5` shards, plus the lord's tax, from floor 3.
 
-**Protected floors:** 1 and 2 accept no economic or hazard primitives from the Chronicler.
-Monuments and shrines are allowed. This keeps the newcomer ramp stable while the tower above it
-mutates. When the tower grows, the protected band grows with it (target: the bottom 5%).
+**Protected floors:** 1 and 2 accept no economic or hazard primitives from the Chronicler and have
+no lords. Monuments and shrines are allowed. When the tower grows, the protected band grows with
+it (target: the bottom 5%).
 
-**Biomes in beta:** three, drawn from the v1 list: Crumbling Ruins (1 to 4), Verdant Canopy
-(5 to 7), Crimson Forge (8 to 10). Biome is mostly prose in a text game, so this list is cheap to
-extend.
+**Biomes in beta:** the trial and the wild floors are Crumbling Ruins for now; Verdant Canopy and
+Crimson Forge follow. Biome is mostly prose in a text game, so this list is cheap to extend.
 
 **Floor 10 and the gate.** The floor 10 boss is beatable; first ascent is a chronicle deed and the
 winner becomes the most contested lord in the beta. The gate to floor 11 is visible and sealed,

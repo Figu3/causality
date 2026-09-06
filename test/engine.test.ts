@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { BETA_TOP_FLOOR, newCharacter, step, type SideEffect } from "../src/core/engine.js";
 import { seeded, type Rng } from "../src/core/rng.js";
+import { generateFloor } from "../src/core/floor.js";
 import { DAY_MS, MAX_AGE } from "../src/core/stats.js";
 import type { Character, Response } from "../src/core/types.js";
 
@@ -169,5 +170,106 @@ describe("engine", () => {
     const again = step(dead, { verb: "attack" }, later, seeded(1));
     expect(again.character).toEqual(dead);
     expect(again.response.choices).toHaveLength(0);
+  });
+});
+
+describe("trial, city and the wild", () => {
+  function walkTo(c: Character, roomId: string, now: number, rng: Rng): { c: Character; last: Response } {
+    // breadth-first over visible exits, moving the character along the way
+    let cur = c;
+    let last = step(cur, { verb: "look" }, now, rng);
+    cur = last.character;
+    const seen = new Set<string>();
+    for (let i = 0; i < 40 && cur.roomId !== roomId; i++) {
+      seen.add(cur.roomId!);
+      const moves = last.response.choices.filter((x) => x.verb === "move");
+      const next = moves.find((m) => m.args!.to === roomId) ?? moves.find((m) => !seen.has(m.args!.to!)) ?? moves[0];
+      if (!next) break;
+      last = step(cur, { verb: "move", args: next.args! }, now, rng);
+      cur = last.character;
+      while (cur.combat) { last = step(cur, { verb: "attack" }, now, rng); cur = last.character; }
+    }
+    return { c: cur, last: last.response };
+  }
+
+  it("nothing on the trial floor can kill you: a 1 hp character loses every fight and is still alive", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 1e9 }), (seed) => {
+      const rng = seeded(seed);
+      let c = { ...fresh(), hp: 1 };
+      let r = step(c, { verb: "look" }, T0, rng);
+      c = r.character;
+      let fights = 0;
+      for (let i = 0; i < 60 && fights < 3; i++) {
+        const choice = r.response.choices.find((x) => x.verb === "attack") ?? r.response.choices.find((x) => x.verb === "move");
+        if (!choice) break;
+        if (choice.verb === "attack") fights++;
+        r = step(c, { verb: choice.verb, args: choice.args ?? {} }, T0, rng);
+        c = r.character;
+        expect(c.status).toBe("alive");
+        expect(c.floor).toBe(1);
+      }
+    }), { numRuns: 50 });
+  });
+
+  it("old age still kills on the trial floor", () => {
+    const r = step(fresh(45), { verb: "look" }, T0 + 60 * DAY_MS, seeded(1));
+    expect(r.character.status).toBe("dead");
+  });
+
+  it("the hidden Warden's room is never offered as an exit until examined and found; then it is", () => {
+    const rng = seeded(7);
+    let c = fresh();
+    let r = step(c, { verb: "look" }, T0, rng);
+    c = r.character;
+    const g = generateFloor(1, "2026-09-05");
+    const wardenRoom = g.boss;
+    const neighbour = g.rooms[wardenRoom]!.exits[0]!;
+    const w = walkTo(c, neighbour, T0, rng);
+    c = w.c;
+    expect(c.roomId).toBe(neighbour);
+    expect(w.last.choices.some((x) => x.verb === "move" && x.args!.to === wardenRoom)).toBe(false);
+    let found = false;
+    for (let i = 0; i < 60 && !found; i++) {
+      r = step(c, { verb: "examine" }, T0, rng);
+      c = r.character;
+      found = c.revealed.includes(wardenRoom);
+    }
+    expect(found).toBe(true);
+    expect(r.response.choices.some((x) => x.verb === "move" && x.args!.to === wardenRoom)).toBe(true);
+  });
+
+  it("the trial stair is open without a boss kill; the city stair is open; the wild stair needs the boss", () => {
+    const rng = seeded(3);
+    let c = fresh();
+    const g1 = generateFloor(1, "2026-09-05");
+    const stair1 = Object.values(g1.rooms).find((x) => x.stair)!.id;
+    let w = walkTo(c, stair1, T0, rng);
+    c = w.c;
+    expect(w.last.choices.some((x) => x.verb === "climb")).toBe(true);
+    let r = step(c, { verb: "climb" }, T0, rng);
+    c = r.character;
+    expect(c.floor).toBe(2);
+    expect(r.response.text).toContain("Landing");
+    w = walkTo(c, "stair", T0, rng);
+    c = w.c;
+    expect(w.last.choices.some((x) => x.verb === "climb")).toBe(true);
+    r = step(c, { verb: "climb" }, T0, rng);
+    c = r.character;
+    expect(c.floor).toBe(3);
+    expect(r.response.text).toContain("wild");
+  });
+
+  it("the city has no fights above ground and the inn heals", () => {
+    const rng = seeded(11);
+    let c = { ...fresh(), floor: 2, hp: 10 };
+    let r = step(c, { verb: "look" }, T0, rng);
+    c = r.character;
+    for (const id of ["square", "hall", "shrine", "square", "gate", "inn"]) {
+      r = step(c, { verb: "move", args: { to: id } }, T0, rng);
+      c = r.character;
+      expect(c.combat).toBeNull();
+    }
+    r = step(c, { verb: "rest" }, T0, rng);
+    expect(r.character.hp).toBeGreaterThan(10);
   });
 });

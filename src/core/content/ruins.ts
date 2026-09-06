@@ -40,8 +40,23 @@ export const ROOM_PROSE = {
   ],
 } as const;
 
-export function enemyPool(floor: number): Enemy[] {
-  const f = floor - 1;
+/** Weak things for the trial floor, where nothing can kill you. */
+export function trialPool(): Enemy[] {
+  return [
+    { id: "rat", name: "a tomb rat", hp: 10, maxHp: 10, attack: 6, armor: 0, dodge: 10, pursuit: 20, xp: 4, shards: 1, boss: false },
+    { id: "husk", name: "a dust husk", hp: 14, maxHp: 14, attack: 8, armor: 0, dodge: 4, pursuit: 6, xp: 6, shards: 2, boss: false },
+  ];
+}
+
+/**
+ * The Warden of the Threshold: the hidden boss of the trial floor. Harder than anything on
+ * floor 10, in the one place that cannot kill you. Beating it is a deed.
+ */
+export const WARDEN: Enemy = { id: "warden", name: "the Warden of the Threshold", hp: 260, maxHp: 260, attack: 52, armor: 5, dodge: 16, pursuit: 40, xp: 400, shards: 200, boss: true };
+
+/** `level` is the wild difficulty index: floor 3 is level 1. */
+export function enemyPool(level: number): Enemy[] {
+  const f = Math.max(0, level - 1);
   return [
     { id: "rat", name: "a tomb rat", hp: 14 + f * 4, maxHp: 14 + f * 4, attack: 9 + f * 2, armor: 0, dodge: 14, pursuit: 25, xp: 6, shards: 2, boss: false },
     { id: "husk", name: "a dust husk", hp: 20 + f * 5, maxHp: 20 + f * 5, attack: 12 + f * 2, armor: 1, dodge: 6, pursuit: 8, xp: 9, shards: 4, boss: false },
@@ -50,8 +65,8 @@ export function enemyPool(floor: number): Enemy[] {
   ];
 }
 
-export function bossOf(floor: number): Enemy {
-  const f = floor - 1;
+export function bossOf(level: number): Enemy {
+  const f = Math.max(0, level - 1);
   return { id: "guardian", name: "the Guardian of the Stair", hp: 48 + f * 12, maxHp: 48 + f * 12, attack: 16 + f * 3, armor: 2, dodge: 8, pursuit: 15, xp: 40 + f * 10, shards: 25 + f * 10, boss: true };
 }
 

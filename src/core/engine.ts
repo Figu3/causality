@@ -1,6 +1,6 @@
 import { resolveTurn, startCombat, type CombatAction } from "./combat.js";
 import { computeEstate, isHeldPlace, type Estate } from "./estate.js";
-import { dayKey, generateFloor } from "./floor.js";
+import { dayKey, generateFloor, CITY_FLOOR } from "./floor.js";
 import type { Rng } from "./rng.js";
 import {
   ageAt, derived, effectiveStats, growthRate, isStat, baseStats,
@@ -39,7 +39,7 @@ export function newCharacter(id: string, playerId: string, name: string, startin
     id, playerId, name: trimmed, bornAt: now, startingAge, base, level: 1, xp: 0, unspent: 0,
     hp: d.maxHp, focus: d.focusPool, shards: STARTING_SHARDS,
     inventory: STARTING_KIT.map((i) => ({ ...i })), heirloomId: null, heir: null,
-    floor: 1, roomId: null, runDay: null, cleared: [], combat: null, kills: 0, ascents: [],
+    floor: 1, roomId: null, runDay: null, cleared: [], combat: null, kills: 0, ascents: [], revealed: [],
     status: "alive", death: null,
   };
 }
@@ -76,6 +76,16 @@ class Ctx {
   }
   cleared(id: string): boolean {
     return this.c.cleared.includes(id);
+  }
+  get kind() {
+    return this.graph.kind;
+  }
+  revealed(id: string): boolean {
+    return this.c.revealed.includes(id);
+  }
+  /** exits the character can see from a room */
+  visibleExits(r: Room): string[] {
+    return r.exits.filter((e) => !this.graph.rooms[e]?.hidden || this.revealed(e));
   }
   markCleared(id: string): void {
     if (!this.cleared(id)) this.c = { ...this.c, cleared: [...this.c.cleared, id] };
@@ -115,6 +125,7 @@ function applyEstate(x: Ctx, estate: Estate, ending: "death" | "retirement", rec
 }
 
 function die(x: Ctx, cause: string): StepResult {
+  if (x.kind === "trial" && cause !== "of old age") return trialRescue(x, cause);
   const record: DeathRecord = { at: x.now, cause, floor: x.c.floor, age: x.age, epitaph: epitaphFor(x.c, cause, x.age) };
   const estate = computeEstate(x.c, "death", isHeldPlace(x.c.floor));
   x.c = { ...x.c, hp: 0, status: "dead", death: record, combat: null, shards: 0, inventory: [] };
@@ -125,6 +136,14 @@ function die(x: Ctx, cause: string): StepResult {
   else x.say("You died unprepared. Your estate is lost.");
   if (estate.itemDropped) x.say(`${estate.itemDropped.name} lies where you fell, for whoever comes next.`);
   x.choices = [];
+  return x.done();
+}
+
+/** The trial floor cannot kill you. You are dragged back to the stair, bruised and intact. */
+function trialRescue(x: Ctx, cause: string): StepResult {
+  x.c = { ...x.c, hp: Math.max(1, Math.floor(x.d.maxHp / 2)), combat: null, roomId: x.graph.entrance };
+  x.say(`You would have been ${cause}. But this is the trial, and the tower is not done with you yet. You wake at the stair, aching, whole.`);
+  x.choices = roomChoices(x);
   return x.done();
 }
 
@@ -167,16 +186,19 @@ function describeRoom(x: Ctx): void {
   x.say(r.prose);
   if (r.type === "treasure" && !x.cleared(r.id)) x.say("There is something here worth taking.");
   if (r.type === "rest" && !x.cleared(r.id)) x.say("You could rest here.");
-  if (r.type === "boss" && x.cleared(r.id)) x.say(x.c.floor >= BETA_TOP_FLOOR ? "The stair beyond is sealed. The tower continues above, and the stars are further than you thought." : "The stair beyond is open.");
+  if (r.stair) {
+    if (x.c.floor >= BETA_TOP_FLOOR) x.say("The stair beyond is sealed. The tower continues above, and the stars are further than you thought.");
+    else if (r.type !== "boss" || x.cleared(r.id)) x.say("The stair up is open.");
+  }
 }
 
 function roomChoices(x: Ctx): Choice[] {
   const r = x.room();
   const out: Choice[] = [];
-  for (const e of r.exits) out.push({ label: `Go: ${x.graph.rooms[e]!.title}`, verb: "move", args: { to: e } });
+  for (const e of x.visibleExits(r)) out.push({ label: `Go: ${x.graph.rooms[e]!.title}`, verb: "move", args: { to: e } });
   if (r.type === "treasure" && !x.cleared(r.id)) out.push({ label: "Take", verb: "take" });
   if (r.type === "rest" && !x.cleared(r.id)) out.push({ label: "Rest", verb: "rest" });
-  if (r.type === "boss" && x.cleared(r.id) && x.c.floor < BETA_TOP_FLOOR) out.push({ label: "Climb", verb: "climb" });
+  if (r.stair && x.c.floor < BETA_TOP_FLOOR && (r.type !== "boss" || x.cleared(r.id))) out.push({ label: "Climb", verb: "climb" });
   out.push({ label: "Examine", verb: "examine" }, { label: "Status", verb: "status" });
   return out;
 }
@@ -225,7 +247,7 @@ function enter(x: Ctx, id: string, from: string | null): StepResult {
 
 function move(x: Ctx, to: string | undefined): StepResult {
   const r = x.room();
-  if (!to || !r.exits.includes(to)) {
+  if (!to || !x.visibleExits(r).includes(to)) {
     x.say("There is no way there from here.");
     return look(x);
   }
@@ -256,16 +278,37 @@ function combat(x: Ctx, action: CombatAction): StepResult {
       x.markCleared(r.id);
       x.say(`You take ${e.shards} shards from the remains.`);
       grantXp(x, e.xp);
-      if (e.boss && !x.c.ascents.includes(x.c.floor)) {
+      if (e.boss && x.kind === "wild" && !x.c.ascents.includes(x.c.floor)) {
         x.c = { ...x.c, ascents: [...x.c.ascents, x.c.floor] };
         x.events.push({ type: "ascent", data: { floor: x.c.floor } });
         x.effects.push({ type: "achievement", key: `ascent:${x.c.floor}`, characterId: x.c.id, data: { floor: x.c.floor, at: x.now } });
         x.say(x.c.floor >= BETA_TOP_FLOOR ? "The Guardian is down. Beyond it, the stair is sealed. The tower continues above, and the stars are further than you thought." : "The Guardian is down. The stair beyond is open.");
+      } else if (e.boss && x.kind !== "wild") {
+        x.events.push({ type: "ascent", data: { floor: x.c.floor, secret: true } });
+        x.effects.push({ type: "achievement", key: `secret_boss:${x.c.floor}`, characterId: x.c.id, data: { floor: x.c.floor, boss: e.id, at: x.now } });
+        x.say(x.kind === "trial" ? "The Warden is down. Nothing on the tower's first floor was meant to fall, and it has. This will be remembered." : "The thing beneath the well is dead. The town above will sleep differently tonight. This will be remembered.");
       }
       x.choices = roomChoices(x);
       return x.done();
     }
   }
+}
+
+function examine(x: Ctx): StepResult {
+  const r = x.room();
+  describeRoom(x);
+  const hidden = r.exits.map((e) => x.graph.rooms[e]!).filter((n) => n.hidden && !x.revealed(n.id));
+  for (const n of hidden) {
+    const roll = x.rng.int(1, 20) + Math.floor(x.stats.perception / 2);
+    if (roll >= (n.secretDc ?? 99)) {
+      x.c = { ...x.c, revealed: [...x.c.revealed, n.id] };
+      x.say(`A draught where there should be none. You find a way through, to ${n.title}.`);
+    } else {
+      x.say("Something about this place is not as it seems. You cannot say what. Yet.");
+    }
+  }
+  x.choices = roomChoices(x);
+  return x.done();
 }
 
 function take(x: Ctx): StepResult {
@@ -299,7 +342,7 @@ function rest(x: Ctx): StepResult {
 
 function climb(x: Ctx): StepResult {
   const r = x.room();
-  if (r.type !== "boss" || !x.cleared(r.id)) {
+  if (!r.stair || (r.type === "boss" && !x.cleared(r.id))) {
     x.say("The stair is not here, or not yet open.");
     return look(x);
   }
@@ -310,14 +353,16 @@ function climb(x: Ctx): StepResult {
   x.c = { ...x.c, floor: x.c.floor + 1, roomId: null, cleared: [], combat: null };
   const y = new Ctx(x.c, x.now, x.rng);
   y.events = x.events; y.effects = x.effects; y.text = x.text;
-  y.say(`You climb. Floor ${y.c.floor}.${isHeldPlace(y.c.floor) ? "" : " This is the wild: what you carry dies with you here."}`);
+  if (y.c.floor === CITY_FLOOR) y.say("You climb out of the trial and into lamplight. The Landing. A held place: here, what you carry passes to your heir.");
+  else if (y.c.floor === CITY_FLOOR + 1) y.say(`You climb past the town wall. Floor ${y.c.floor}. This is the wild: from here on, the tower keeps what it takes.`);
+  else y.say(`You climb. Floor ${y.c.floor}.`);
   return enter(y, y.graph.entrance, null);
 }
 
 function status(x: Ctx): StepResult {
   const s = x.stats;
   const heir = x.c.heir ? (x.c.heir.kind === "blood" ? `blood heir ${x.c.heir.accepted ? "(accepted)" : "(not yet accepted)"}` : `spiritual heir ${x.c.heir.label}`) : "no heir named";
-  x.say(`*${x.c.name}*, aged ${Math.floor(x.age)}, level ${x.c.level}. Floor ${x.c.floor}${isHeldPlace(x.c.floor) ? " (held)" : " (wild)"}.`);
+  x.say(`*${x.c.name}*, aged ${Math.floor(x.age)}, level ${x.c.level}. Floor ${x.c.floor} (${x.kind === "trial" ? "trial, nothing here can kill you" : x.kind === "city" ? "the Landing, held" : "wild"}).`);
   x.say(`HP ${x.c.hp}/${x.d.maxHp}. Focus ${x.c.focus}/${x.d.focusPool}. Shards ${x.c.shards}. Kills ${x.c.kills}.`);
   x.say(`Might ${s.might}, Agility ${s.agility}, Grit ${s.grit}, Cunning ${s.cunning}, Focus ${s.focus}, Perception ${s.perception}, Guile ${s.guile}, Presence ${s.presence}.`);
   x.say(`Carrying: ${x.c.inventory.map((i) => i.name + (i.id === x.c.heirloomId ? " (heirloom)" : "")).join(", ") || "nothing"}.`);
@@ -400,7 +445,7 @@ export function step(character: Character, req: Request, now: number, rng: Rng):
   switch (req.verb) {
     case "look": return look(x);
     case "move": return move(x, args.to);
-    case "examine": describeRoom(x); x.choices = roomChoices(x); return x.done();
+    case "examine": return examine(x);
     case "take": return take(x);
     case "rest": return rest(x);
     case "climb": return climb(x);

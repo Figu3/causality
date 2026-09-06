@@ -83,17 +83,26 @@ export interface Character {
   combat: CombatState | null;
   kills: number;
   ascents: number[];
+  /** hidden rooms this character has found, by room id */
+  revealed: string[];
   status: CharacterStatus;
   death: DeathRecord | null;
 }
 
-export type RoomType = "entrance" | "combat" | "treasure" | "trap" | "rest" | "boss";
+export type RoomType = "entrance" | "combat" | "treasure" | "trap" | "rest" | "boss" | "stair" | "city";
+export type FloorKind = "trial" | "city" | "wild";
 export interface Room {
   id: string;
   type: RoomType;
   title: string;
   prose: string;
   exits: string[];
+  /** not offered as an exit until the character has revealed it */
+  hidden?: boolean;
+  /** perception check to reveal, rolled from an adjacent room */
+  secretDc?: number;
+  /** the stair up is in this room */
+  stair?: boolean;
   enemy?: Enemy;
   trapDc?: number;
   trapDamage?: number;
@@ -102,6 +111,7 @@ export interface Room {
 }
 export interface FloorGraph {
   floor: number;
+  kind: FloorKind;
   day: string;
   seed: number;
   biome: string;
