@@ -76,3 +76,22 @@ RESULT (${input.success ? "it worked" : "it failed"}): ${input.result}`;
   if (!text || text.length > 900) return null;
   return text;
 }
+
+const FIGHT = `You narrate the end of one fight in Causality, a grim text tower-climber. Second person, past tense, one paragraph of three or four short sentences, plain words, no dashes of any kind, no numbers, no game terms. Work only from the LOG and the OUTCOME: do not add wounds, loot, deaths or escapes it does not contain. Make the creature specific and the fight physical. End on how the character stands now.`;
+
+export async function narrateFight(
+  cfg: LlmConfig | null,
+  input: { enemy: string; boss: boolean; outcome: "won" | "fled" | "died"; turns: number; log: string[]; hp: number; maxHp: number; room: string },
+  fetchImpl?: Fetch,
+): Promise<string | null> {
+  if (!cfg) return null;
+  const state = input.outcome === "died" ? "the character is dead" : input.hp < input.maxHp / 3 ? "the character is badly hurt" : input.hp < (2 * input.maxHp) / 3 ? "the character is hurt" : "the character is barely marked";
+  const user = `Place: ${input.room}. Creature: ${input.enemy}${input.boss ? " (a guardian)" : ""}.
+OUTCOME: ${input.outcome === "won" ? "the creature is dead" : input.outcome === "fled" ? "the character got away" : "the character was killed"}; ${state}.
+LOG:
+${input.log.slice(-14).join("\n")}`;
+  const res = await chat(cfg, [{ role: "system", content: FIGHT }, { role: "user", content: user }], { maxTokens: 220, temperature: 0.8 }, fetchImpl);
+  const text = res?.text.trim().replace(/\s*[\u2014\u2013]\s*|\s+--\s+/g, ", ");
+  if (!text || text.length > 1200) return null;
+  return text;
+}

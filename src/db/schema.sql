@@ -86,3 +86,13 @@ create table if not exists improvise_log (
   at timestamptz not null default now()
 );
 create index if not exists improvise_log_at_idx on improvise_log(at);
+
+-- the nightly prose batch: one row per floor per day
+create table if not exists floor_prose (
+  floor int not null,
+  day text not null,
+  data jsonb not null,
+  model text,
+  created_at timestamptz not null default now(),
+  primary key (floor, day)
+);

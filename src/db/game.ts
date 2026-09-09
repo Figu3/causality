@@ -6,7 +6,8 @@ import { ageAt, effectiveStats } from "../core/stats.js";
 import { dayKey, generateFloor } from "../core/floor.js";
 import type { Character, Choice, DeathRecord, Item, Request, Response } from "../core/types.js";
 import type { Fetch, RoleConfigs } from "../llm/gateway.js";
-import { narrate, propose } from "../llm/referee.js";
+import { narrate, narrateFight, propose } from "../llm/referee.js";
+import type { ProseOverlay } from "../core/types.js";
 
 export interface Player {
   id: string;
@@ -131,7 +132,8 @@ export class Game {
         return res;
       }
 
-      const out = step(before, req, now, systemRng());
+      const overlay = await loadOverlay(client, before.floor, dayKey(now));
+      const out = step(before, req, now, systemRng(), overlay);
       const awayUntil = out.character.errand ? new Date(out.character.errand.resolvesAt) : null;
       await client.query(
         `update characters set data = $2, status = $3, updated_at = now(),
@@ -143,13 +145,22 @@ export class Game {
       for (const e of out.effects) await this.apply(client, e, now);
       const response = await this.decorate(client, out.character, out.response);
       await client.query("commit");
-      return response;
+      return this.narrateEvents(response);
     } catch (e) {
       await client.query("rollback");
       throw e;
     } finally {
       client.release();
     }
+  }
+
+  /** After commit: let the narrator tell the fight, appended below the engine's lines. */
+  private async narrateEvents(res: Response): Promise<Response> {
+    const f = res.events.find((e) => e.type === "fight_over");
+    if (!f || !this.llm.narrator) return res;
+    const d = f.data as { enemy: string; boss: boolean; outcome: "won" | "fled" | "died"; turns: number; log: string[]; hp: number; maxHp: number; room: string };
+    const para = await narrateFight(this.llm.narrator, d, this.fetchImpl);
+    return para ? { ...res, text: `${res.text}\n\n_${para}_` } : res;
   }
 
   private async apply(q: Q, e: SideEffect, now: number): Promise<void> {
@@ -316,4 +327,16 @@ export async function runningCountdowns(pool: pg.Pool): Promise<Countdown[]> {
 
 export async function touchCountdown(pool: pg.Pool, characterId: string, at: number): Promise<void> {
   await pool.query(`update characters set data = jsonb_set(data, '{errand,countdown,lastEditAt}', to_jsonb($2::bigint)) where id = $1 and data->'errand'->'countdown' is not null`, [characterId, at]);
+}
+
+export async function loadOverlay(q: Q, floor: number, day: string): Promise<ProseOverlay> {
+  const r = await q.query(`select data from floor_prose where floor = $1 and day = $2`, [floor, day]);
+  return (r.rows[0]?.data as ProseOverlay | undefined) ?? {};
+}
+export async function hasOverlay(pool: pg.Pool, floor: number, day: string): Promise<boolean> {
+  const r = await pool.query(`select 1 from floor_prose where floor = $1 and day = $2`, [floor, day]);
+  return r.rows.length > 0;
+}
+export async function saveOverlay(pool: pg.Pool, floor: number, day: string, data: ProseOverlay, model: string | null): Promise<void> {
+  await pool.query(`insert into floor_prose (floor, day, data, model) values ($1, $2, $3, $4) on conflict (floor, day) do nothing`, [floor, day, data, model]);
 }

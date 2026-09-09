@@ -1,7 +1,10 @@
 import "dotenv/config";
 import pg from "pg";
 import { createBot } from "./adapters/telegram.js";
-import { Game, dueErrands, runningCountdowns, touchCountdown } from "./db/game.js";
+import { Game, dueErrands, hasOverlay, runningCountdowns, saveOverlay, touchCountdown } from "./db/game.js";
+import { dayKey, generateFloor } from "./core/floor.js";
+import { BETA_TOP_FLOOR } from "./core/engine.js";
+import { generateFloorProse } from "./llm/prose.js";
 import { countdownText } from "./adapters/telegram.js";
 import { roleConfigsFromEnv } from "./llm/gateway.js";
 
@@ -59,6 +62,32 @@ const notifier = setInterval(async () => {
   }
 }, 60_000);
 notifier.unref();
+
+// the nightly prose batch: write today's floors if they are not written yet (runs at boot and just after midnight UTC)
+let proseBusy = false;
+const proseJob = async (): Promise<void> => {
+  if (proseBusy || !llm.narrator) return;
+  proseBusy = true;
+  try {
+    const day = dayKey(Date.now());
+    for (let floor = 1; floor <= BETA_TOP_FLOOR; floor++) {
+      if (floor === 2 || (await hasOverlay(pool, floor, day))) continue;
+      const g = generateFloor(floor, day);
+      const { overlay, model } = await generateFloorProse(llm.narrator, g);
+      if (Object.keys(overlay).length) {
+        await saveOverlay(pool, floor, day, overlay, model);
+        console.log(`prose: floor ${floor} ${day} written (${Object.keys(overlay).length} rooms, ${model})`);
+      } else console.warn(`prose: floor ${floor} ${day} not written, will retry`);
+    }
+  } catch (err) {
+    console.error("prose job", err);
+  } finally {
+    proseBusy = false;
+  }
+};
+void proseJob();
+const proseTimer = setInterval(() => void proseJob(), 5 * 60_000);
+proseTimer.unref();
 
 console.log("causality: starting bot");
 await bot.start();

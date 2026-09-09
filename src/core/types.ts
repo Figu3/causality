@@ -151,7 +151,8 @@ export interface GameEvent {
     | "heir_request"
     | "errand_started"
     | "errand_resolved"
-    | "defy";
+    | "defy"
+    | "fight_over";
   data: Record<string, unknown>;
 }
 export interface StateSnapshot {
@@ -174,3 +175,6 @@ export interface Response {
   events: GameEvent[];
   state: StateSnapshot;
 }
+
+/** Per-room text written by the nightly prose batch, keyed by room id. Replaces the templates. */
+export type ProseOverlay = Record<string, { title: string; prose: string }>;

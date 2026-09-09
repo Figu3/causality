@@ -8,7 +8,7 @@ import {
 } from "./stats.js";
 import { STARTING_KIT } from "./content/ruins.js";
 import type {
-  Character, Choice, DeathRecord, ErrandKind, FloorGraph, GameEvent, Item, Request, Response, Room, StateSnapshot,
+  Character, Choice, DeathRecord, ErrandKind, FloorGraph, GameEvent, Item, ProseOverlay, Request, Response, Room, StateSnapshot,
 } from "./types.js";
 import { TREASURE_ITEMS } from "./content/ruins.js";
 import { FOCUS_COST, bonus, difficulty, sanitize, type Proposal } from "./defy.js";
@@ -67,6 +67,17 @@ export function snapshot(c: Character, now: number): StateSnapshot {
 
 /* ------------------------------------------------------------------ helpers */
 
+/** Swap template titles and prose for the day's written ones. Structure is never touched. */
+export function applyOverlay(g: FloorGraph, overlays: ProseOverlay): FloorGraph {
+  if (!Object.keys(overlays).length) return g;
+  const rooms: FloorGraph["rooms"] = {};
+  for (const [id, r] of Object.entries(g.rooms)) {
+    const o = overlays[id];
+    rooms[id] = o ? { ...r, title: o.title || r.title, prose: o.prose || r.prose } : r;
+  }
+  return { ...g, rooms };
+}
+
 class Ctx {
   readonly graph: FloorGraph;
   readonly age: number;
@@ -76,11 +87,11 @@ class Ctx {
   choices: Choice[] = [];
   events: GameEvent[] = [];
   effects: SideEffect[] = [];
-  constructor(public c: Character, public now: number, public rng: Rng) {
+  constructor(public c: Character, public now: number, public rng: Rng, public overlays: ProseOverlay = {}) {
     this.age = ageAt(c.startingAge, c.bornAt, now);
     this.stats = effectiveStats(c.base, this.age);
     this.d = derived(this.stats);
-    this.graph = generateFloor(c.floor, dayKey(now));
+    this.graph = applyOverlay(generateFloor(c.floor, dayKey(now)), overlays);
   }
   room(): Room {
     return this.graph.rooms[this.c.roomId ?? this.graph.entrance]!;
@@ -277,8 +288,10 @@ function combat(x: Ctx, action: CombatAction): StepResult {
     case "ongoing":
       return combatPrompt(x);
     case "died":
+      x.events.push({ type: "fight_over", data: { outcome: "died", enemy: s.enemy.name, boss: s.enemy.boss, turns: res.combat.turn, log: res.combat.log, hp: 0, maxHp: x.d.maxHp, room: r.title, floor: x.c.floor } });
       return die(x, `slain by ${s.enemy.name}`);
     case "fled": {
+      x.events.push({ type: "fight_over", data: { outcome: "fled", enemy: s.enemy.name, boss: s.enemy.boss, turns: res.combat.turn, log: res.combat.log, hp: x.c.hp, maxHp: x.d.maxHp, room: r.title, floor: x.c.floor } });
       const back = r.exits[0] ?? x.graph.entrance;
       x.c = { ...x.c, combat: null, roomId: back };
       x.say(`You fall back to ${x.graph.rooms[back]!.title}.`);
@@ -287,6 +300,7 @@ function combat(x: Ctx, action: CombatAction): StepResult {
     }
     case "won": {
       const e = s.enemy;
+      x.events.push({ type: "fight_over", data: { outcome: "won", enemy: e.name, boss: e.boss, turns: res.combat.turn, log: res.combat.log, hp: x.c.hp, maxHp: x.d.maxHp, room: r.title, floor: x.c.floor } });
       x.c = { ...x.c, combat: null, kills: x.c.kills + 1, shards: x.c.shards + e.shards };
       x.markCleared(r.id);
       x.say(`You take ${e.shards} shards from the remains.`);
@@ -364,7 +378,7 @@ function climb(x: Ctx): StepResult {
     return look(x);
   }
   x.c = { ...x.c, floor: x.c.floor + 1, roomId: null, cleared: [], combat: null };
-  const y = new Ctx(x.c, x.now, x.rng);
+  const y = new Ctx(x.c, x.now, x.rng, {});
   y.events = x.events; y.effects = x.effects; y.text = x.text;
   if (y.c.floor === CITY_FLOOR) y.say("You climb out of the trial and into lamplight. The Landing. A held place: here, what you carry passes to your heir.");
   else if (y.c.floor === CITY_FLOOR + 1) y.say(`You climb past the town wall. Floor ${y.c.floor}. This is the wild: from here on, the tower keeps what it takes.${y.c.heir ? "" : " You have named no heir. If you die up here, everything you are is lost."}`);
@@ -667,8 +681,8 @@ function revealAdjacent(x: Ctx): string | null {
 
 /* ------------------------------------------------------------------ step */
 
-export function step(character: Character, req: Request, now: number, rng: Rng): StepResult {
-  const x = new Ctx(character, now, rng);
+export function step(character: Character, req: Request, now: number, rng: Rng, overlays: ProseOverlay = {}): StepResult {
+  const x = new Ctx(character, now, rng, overlays);
   const args = req.args ?? {};
 
   if (x.c.status !== "alive") {
